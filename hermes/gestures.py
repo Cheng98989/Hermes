@@ -17,6 +17,16 @@ THUMB_KNUCKLE = 2
 MIDDLE_KNUCKLE = 9
 PINKY_KNUCKLE = 17
 
+GESTURES = {
+    frozenset()                                           : "fist",
+    frozenset({"index"})                                  : "point",
+    frozenset({"index", "middle"})                        : "victory",
+    frozenset({"thumb"})                                  : "thumb_up",
+    frozenset({"thumb", "index"})                         : "gun",
+    frozenset({"index", "pinky"})                         : "rock",
+    frozenset({"thumb", "index", "middle", "ring", "pinky"}): "open_palm",
+    frozenset({"thumb", "index", "pinky"})                : "spiderman",
+}
 
 def _distance(a, b) -> float:
     return math.hypot(a.x - b.x, a.y - b.y)
@@ -64,3 +74,8 @@ def fingers_up(hand) -> set[str]:
         up_fingers.add("thumb")
 
     return up_fingers
+
+def gesture_name(hand) -> str:
+    """Name of the recognised gesture, or 'unknown' if this combination
+    of extended fingers is not in the table."""
+    return GESTURES.get(frozenset(fingers_up(hand)), "unknown")

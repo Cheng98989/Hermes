@@ -3,7 +3,7 @@ from hermes.camera import Camera
 from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
-from hermes.gestures import fingers_up
+from hermes.gestures import fingers_up, gesture_name
 
 cam = Camera()
 hand = Hand(number_of_hands=1)
@@ -26,6 +26,7 @@ while True:
     for single_hand in landmarks.hand_landmarks:
         up = fingers_up(single_hand)
         overlay.draw_text(frame, f"{len(up)}  {sorted(up)}", y=70)
+        overlay.draw_text(frame, gesture_name(single_hand), y=100)
 
     # Display the frame
     cv2.imshow("Hermes", frame)
