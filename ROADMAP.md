@@ -36,9 +36,9 @@ Regola pratica: se un esempio comincia con `mp.solutions.`, è vecchio.
 
 ## Regole di sviluppo
 
-1. **Prima far funzionare, poi estrarre i moduli.** Gli esperimenti vivono in
-   `esperimenti/`, non fanno parte dell'app. Quando uno script funziona ed è
-   chiaro, se ne estrae un modulo.
+1. **Prima far funzionare, poi estrarre i moduli.** Si parte da uno script
+   usa-e-getta che gira; quando funziona ed è chiaro, se ne estrae un modulo.
+   Non si progetta l'astrazione di qualcosa che non si è ancora capito.
 2. **Separare puro da I/O.** Le funzioni che trasformano dati in dati
    (`landmark -> gesto`, `gesto -> evento`) non devono toccare webcam né mouse:
    così si testano in mezzo secondo senza agitare la mano davanti allo schermo.
@@ -55,7 +55,7 @@ Regola pratica: se un esempio comincia con `mp.solutions.`, è vecchio.
 venv + `mediapipe`, `opencv-python`, `pynput`.
 
 ### M1 — Vedere la mano
-Script usa-e-getta in `esperimenti/`.
+Script unico, usa-e-getta.
 - apre la webcam, mostra il frame ribaltato (effetto specchio)
 - MediaPipe individua la mano, i 21 landmark vengono disegnati
 - **FPS scritti a schermo** — servono da subito, sono il budget di tutto il resto
