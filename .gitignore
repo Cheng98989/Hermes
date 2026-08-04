@@ -1,0 +1,42 @@
+# ─── Ambiente virtuale ────────────────────────────────────────────────
+# Non portabile (contiene binari Windows), enorme, e ricostruibile con:
+#   pip install -r requirements.txt
+.venv/
+venv/
+env/
+
+# ─── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# ─── Cache degli strumenti ────────────────────────────────────────────
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ─── Pacchettizzazione ────────────────────────────────────────────────
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ─── Editor ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ─── Segreti: mai nel repo ────────────────────────────────────────────
+.env
+*.local
+
+# ─── Sistema operativo ────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ─── Log ──────────────────────────────────────────────────────────────
+*.log
