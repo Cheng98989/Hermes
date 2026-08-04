@@ -5,6 +5,7 @@ from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
 
 cam = Camera()
+hand = Hand(number_of_hands=2)
 fps_counter = FpsCounter()
 overlay = Overlay(cam.width, cam.height)
 while True:
@@ -16,11 +17,8 @@ while True:
     if frame is None:
         continue
 
-    # Process the frame to detect hands and get landmarks
-    hand = Hand(frame)
-
     # Draw landmarks and FPS on the frame
-    landmarks = hand.get_all_landmarks()
+    landmarks = hand.get_all_landmarks(frame)
     if landmarks is not None:
         overlay.draw_landmarks(frame, landmarks)
         overlay.draw_fps(frame, fps)
@@ -32,3 +30,5 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 cam.close()
+hand.close()
+cv2.destroyAllWindows()
