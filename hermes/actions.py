@@ -10,11 +10,10 @@ class Action(NamedTuple):
 
 
 ACTIONS = {
-    "thumb_up":   Action(Key.media_volume_up,   dwell=0.3, repeat=0.15),
-    "thumb_down": Action(Key.media_volume_down, dwell=0.3, repeat=0.15),
+    "point_up":   Action(Key.media_volume_up,   dwell=0.3, repeat=0.15),
+    "point_down": Action(Key.media_volume_down, dwell=0.3, repeat=0.15),
     "victory":    Action(Key.media_play_pause,  dwell=0.5, repeat=None),
 }
-
 
 class Actions:
     """Turns a gesture name into a keystroke on the real system."""

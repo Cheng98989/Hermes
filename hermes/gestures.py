@@ -1,10 +1,32 @@
+"""Turning hand landmarks into gesture names.
+
+Everything here works on mediapipe's **world landmarks** - real 3D positions
+in metres, centred on the hand - not on the normalised image coordinates.
+
+That distinction is the whole reason this module works. Measured on this
+machine, moving and tilting a hand made the projected palm length swing by a
+factor of 8 (0.10 to 0.80), while the same measure in world coordinates
+stayed within 30% (0.09 to 0.12 m - a real palm). Image coordinates are a
+shadow: they change when the hand merely turns. World coordinates describe
+the hand itself.
+
+The module imports nothing but `math`, so it can be tested without a webcam.
+"""
+
 import math
 
 WRIST = 0
+INDEX_TIP = 8
+MIDDLE_KNUCKLE = 9
 
 # name -> (tip, middle knuckle)
-# the thumb is not here: it folds sideways, so the generic rule below
-# does not work for it
+#
+# The thumb is deliberately absent. It folds sideways rather than curling, and
+# in a natural fist it rests on the outside of the other fingers - far enough
+# out to pass any "is it extended?" test we tried. That made a plain fist
+# register as a thumb gesture, and the fist is what switches Hermes off.
+# Four fingers that are always right beat five with one that lies.
+# Worth retrying now that measurements happen in 3D.
 FINGERS = {
     "index":  (8, 6),
     "middle": (12, 10),
@@ -12,48 +34,42 @@ FINGERS = {
     "pinky":  (20, 18),
 }
 
-THUMB_TIP = 4
-THUMB_KNUCKLE = 2
-MIDDLE_KNUCKLE = 9
-PINKY_KNUCKLE = 17
-
 GESTURES = {
-    frozenset()                                           : "fist",
-    frozenset({"index"})                                  : "point",
-    frozenset({"index", "middle"})                        : "victory",
-    frozenset({"thumb"})                                  : "thumb_up",
-    frozenset({"thumb", "index"})                         : "gun",
-    frozenset({"index", "pinky"})                         : "rock",
-    frozenset({"thumb", "index", "middle", "ring", "pinky"}): "open_palm",
-    frozenset({"thumb", "index", "pinky"})                : "spiderman",
+    frozenset():                                      "fist",
+    frozenset({"index"}):                             "point",
+    frozenset({"index", "middle"}):                   "victory",
+    frozenset({"index", "pinky"}):                    "rock",
+    frozenset({"index", "middle", "ring", "pinky"}):  "open_palm",
 }
 
-def _distance(a, b) -> float:
-    return math.hypot(a.x - b.x, a.y - b.y)
+# Gestures whose meaning depends on which way they point. Same fingers, two
+# names: the finger set alone cannot tell them apart.
+ORIENTED = {
+    "point": {True: "point_up", False: "point_down"},
+}
+
+
+def distance(a, b) -> float:
+    """Distance between two landmarks, in three dimensions."""
+    return math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
 
 
 def palm_size(hand) -> float:
-    """Wrist to middle knuckle.
+    """Wrist to middle knuckle, in metres.
 
-    Careful: this is a 2D projection, so it shrinks when the hand tilts
-    towards the camera. Measured values collapsed towards zero on some
-    frames, which is why nothing here divides by it any more. Kept because
-    it is still a reasonable scale reference for gestures that need one.
+    The one length that never changes whatever the fingers do, and - unlike
+    its projected counterpart - not when the hand tilts either. Around 0.09
+    to 0.12 on the hand this was measured with.
     """
-    return _distance(hand[WRIST], hand[MIDDLE_KNUCKLE])
+    return distance(hand[WRIST], hand[MIDDLE_KNUCKLE])
 
 
-def _thumb_up(hand) -> bool:
-    """Same rule as the other four fingers - tip farther away than knuckle -
-    but measured from the pinky knuckle instead of the wrist.
+def _points_up(hand) -> bool:
+    """Whether the index finger points up rather than down.
 
-    The thumb rotates around a pivot that sits right next to the wrist, so
-    from the wrist its tip appears to stay at the same distance whatever it
-    does. From the opposite side of the palm the rotation is visible.
+    y grows downwards, so "above" means a smaller y.
     """
-    tip_distance = _distance(hand[THUMB_TIP], hand[PINKY_KNUCKLE])
-    knuckle_distance = _distance(hand[THUMB_KNUCKLE], hand[PINKY_KNUCKLE])
-    return tip_distance > knuckle_distance
+    return hand[INDEX_TIP].y < hand[WRIST].y
 
 
 def fingers_up(hand) -> set[str]:
@@ -61,27 +77,33 @@ def fingers_up(hand) -> set[str]:
 
     A finger is extended when its tip is farther from the wrist than its
     middle knuckle. No thresholds anywhere: every test compares two
-    distances, so hand size and camera distance cancel out.
+    distances, so hand size cancels out.
     """
     up_fingers = set()
     for finger, (tip, middle) in FINGERS.items():
-        tip_distance = _distance(hand[tip], hand[WRIST])
-        knuckle_distance = _distance(hand[middle], hand[WRIST])
+        tip_distance = distance(hand[tip], hand[WRIST])
+        knuckle_distance = distance(hand[middle], hand[WRIST])
         if tip_distance > knuckle_distance:
             up_fingers.add(finger)
 
-    if _thumb_up(hand):
-        up_fingers.add("thumb")
-
     return up_fingers
 
+
 def gesture_name(hand) -> str:
-    """Name of the recognised gesture, or 'unknown' if this combination
-    of extended fingers is not in the table."""
-    return GESTURES.get(frozenset(fingers_up(hand)), "unknown")
+    """Name of the recognised gesture, or 'unknown' if this combination of
+    extended fingers is not in the table."""
+    name = GESTURES.get(frozenset(fingers_up(hand)), "unknown")
+
+    oriented = ORIENTED.get(name)
+    if oriented is not None:
+        name = oriented[_points_up(hand)]
+
+    return name
+
 
 def gesture_from_hands(hands) -> str:
-    """hands is result.hand_landmarks: an empty list when no hand is in frame."""
+    """hands is result.hand_world_landmarks: an empty list when no hand is in
+    frame."""
     if not hands:
         return "none"
     return gesture_name(hands[0])

@@ -38,15 +38,15 @@ while True:
     overlay.draw_landmarks(frame, landmarks)
     overlay.draw_fps(frame, fps)
 
-    gesture = gesture_from_hands(landmarks.hand_landmarks)
+    # recognition runs on the world landmarks (real 3D, in metres); drawing
+    # uses the normalised ones above, because those are what map to pixels
+    gesture = gesture_from_hands(landmarks.hand_world_landmarks)
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
 
     fired = actions.update(gesture, held, now, state == ACTIVE)
     if fired:
         last_command = fired
-
-
     overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command}", y=100)
     overlay.draw_state_border(frame, state)
 
