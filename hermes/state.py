@@ -36,4 +36,13 @@ class StateMachine:
 
         return self.state
 
-        
+class EdgeTrigger:
+    """Fires once when a condition becomes true, not while it stays true."""
+
+    def __init__(self) -> None:
+        self.was_true = False
+
+    def rising(self, condition: bool) -> bool:
+        fire = condition and not self.was_true
+        self.was_true = condition
+        return fire
