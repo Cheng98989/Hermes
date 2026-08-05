@@ -79,3 +79,9 @@ def gesture_name(hand) -> str:
     """Name of the recognised gesture, or 'unknown' if this combination
     of extended fingers is not in the table."""
     return GESTURES.get(frozenset(fingers_up(hand)), "unknown")
+
+def gesture_from_hands(hands) -> str:
+    """hands is result.hand_landmarks: an empty list when no hand is in frame."""
+    if not hands:
+        return "none"
+    return gesture_name(hands[0])

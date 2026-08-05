@@ -1,18 +1,24 @@
 import cv2
+import time
 from hermes.camera import Camera
 from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
-from hermes.gestures import fingers_up, gesture_name
+from hermes.gestures import gesture_from_hands
+from hermes.state import GestureHold
 
 cam = Camera()
 hand = Hand(number_of_hands=1)
-fps_counter = FpsCounter()
+now = time.perf_counter()
+fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
+gesture_hold = GestureHold()
 
 while True:
+    now = time.perf_counter()
+
     # Get the current FPS
-    fps = fps_counter.tick()
+    fps = fps_counter.tick(now)
 
     # Read a frame from the camera
     frame = cam.read()
@@ -20,14 +26,13 @@ while True:
         continue
 
     # Draw landmarks and FPS on the frame
-    landmarks = hand.get_all_landmarks(frame)
+    landmarks = hand.get_all_landmarks(frame, now)
     overlay.draw_landmarks(frame, landmarks)
     overlay.draw_fps(frame, fps)
-    for single_hand in landmarks.hand_landmarks:
-        up = fingers_up(single_hand)
-        overlay.draw_text(frame, f"{len(up)}  {sorted(up)}", y=70)
-        overlay.draw_text(frame, gesture_name(single_hand), y=100)
 
+    gesture = gesture_from_hands(landmarks.hand_landmarks)
+    held = gesture_hold.update(gesture, now)
+    overlay.draw_text(frame, f"{gesture}  {held:.1f}s", y=100)
     # Display the frame
     cv2.imshow("Hermes", frame)
 

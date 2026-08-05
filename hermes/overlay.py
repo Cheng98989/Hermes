@@ -44,5 +44,5 @@ class Overlay:
     def draw_text(self, frame: MatLike, text: str, y: int = 70) -> None:
         cv2.putText(
         frame, text, (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2,
+        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2,
         )

@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 
 import cv2
@@ -46,9 +45,9 @@ class Hand:
         )
         self.landmarker = HandLandmarker.create_from_options(options)
 
-    def get_all_landmarks(self, frame: MatLike) -> HandLandmarkerResult:
+    def get_all_landmarks(self, frame: MatLike, now: float) -> HandLandmarkerResult:
         mp_image = self._prepare_frame(frame)
-        timestamp_ms = int(time.perf_counter() * 1000)
+        timestamp_ms = int(now * 1000)
         return self.landmarker.detect_for_video(mp_image, timestamp_ms)
 
     def _prepare_frame(self, frame: MatLike) -> mp.Image:
