@@ -5,9 +5,11 @@ from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
 from hermes.gestures import gesture_from_hands
-from hermes.state import GestureHold, StateMachine, EdgeTrigger, ACTIVE
+from hermes.state import StateMachine, ACTIVE
+from hermes.timing import GestureHold
 from hermes.killswitch import KillSwitch
-from hermes.actions import Actions, COMMAND_DWELL
+from hermes.actions import Actions
+
 
 cam = Camera()
 hand = Hand(number_of_hands=1)
@@ -16,7 +18,7 @@ fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
 gesture_hold = GestureHold()
 state_machine = StateMachine()
-edge_trigger = EdgeTrigger()
+
 kill_switch = KillSwitch()
 actions = Actions()
 last_command = ""
@@ -40,12 +42,9 @@ while True:
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
 
-    # Actions
-    is_command = state == ACTIVE and held >= COMMAND_DWELL
-
-    if edge_trigger.rising(is_command):
-        if actions.run(gesture):
-            last_command = gesture
+    fired = actions.update(gesture, held, now, state == ACTIVE)
+    if fired:
+        last_command = fired
 
 
     overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command}", y=100)

@@ -1,55 +1,17 @@
 """Tests for hermes.state.
 
 =============================================================================
-GENERATED FILE - this entire file was written by Claude (Anthropic) on
-2026-08-05, on request. See the header of test_gestures.py for how the rest
-of the project was built.
+GENERATED FILE - written by Claude (Anthropic) on 2026-08-05, on request.
+See the header of test_gestures.py for how the rest of the project was built.
 =============================================================================
 
-Not a single sleep() in here. GestureHold and StateMachine never read the
-clock: main.py reads it once per frame and passes the instant in. That is
-what lets a test say "held for 1.1 seconds" by passing the number 1.1,
-instead of actually waiting.
+StateMachine takes the hold time as a number, so every scenario here is just
+a list of (instant, gesture) pairs. No webcam, no clock, no waiting.
 """
 
-import pytest
+from hermes.state import ACTIVE, IDLE, StateMachine
+from hermes.timing import GestureHold
 
-from hermes.state import ACTIVE, IDLE, GestureHold, StateMachine
-
-
-# --- GestureHold ------------------------------------------------------------
-
-def test_a_new_gesture_starts_at_zero():
-    hold = GestureHold()
-    assert hold.update("open_palm", 10.0) == 0.0
-
-
-def test_the_same_gesture_accumulates_time():
-    # pytest.approx, not ==: floats are approximate, and 11.2 - 10.0 comes
-    # out as 1.1999999999999993
-    hold = GestureHold()
-    hold.update("open_palm", 10.0)
-    assert hold.update("open_palm", 10.5) == pytest.approx(0.5)
-    assert hold.update("open_palm", 11.2) == pytest.approx(1.2)
-
-
-def test_changing_gesture_resets_the_clock():
-    hold = GestureHold()
-    hold.update("open_palm", 10.0)
-    hold.update("open_palm", 11.5)
-    assert hold.update("fist", 11.6) == 0.0
-
-
-def test_going_back_to_a_gesture_does_not_resume_it():
-    """Holding is continuous: letting go and coming back starts over."""
-    hold = GestureHold()
-    hold.update("open_palm", 0.0)
-    hold.update("open_palm", 0.9)     # almost there
-    hold.update("none", 1.0)          # hand drops for one frame
-    assert hold.update("open_palm", 1.1) == 0.0
-
-
-# --- StateMachine -----------------------------------------------------------
 
 def test_starts_idle():
     assert StateMachine().state == IDLE
@@ -99,8 +61,6 @@ def test_a_brief_gap_does_not_deactivate():
     assert machine.update("none", 1.5) == ACTIVE
 
 
-# --- the two together -------------------------------------------------------
-
 def test_full_sequence():
     """A plausible run: noise, activation, noise while active, shutdown."""
     hold = GestureHold()
@@ -113,7 +73,7 @@ def test_full_sequence():
         (0.6, "open_palm"),
         (1.4, "open_palm"),    # 0.8s held: not yet
         (1.7, "open_palm"),    # 1.1s held: switches on
-        (2.0, "victory"),      # means nothing yet
+        (2.0, "victory"),      # means nothing to the state machine
         (3.0, "fist"),
         (4.1, "fist"),         # 1.1s held: switches off
     ]
