@@ -35,6 +35,7 @@ while True:
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
     overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s", y=100)
+    overlay.draw_state_border(frame, state)
     # Display the frame
     cv2.imshow("Hermes", frame)
 
