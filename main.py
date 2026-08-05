@@ -5,7 +5,7 @@ from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
 from hermes.gestures import gesture_from_hands
-from hermes.state import GestureHold
+from hermes.state import GestureHold, StateMachine
 
 cam = Camera()
 hand = Hand(number_of_hands=1)
@@ -13,6 +13,7 @@ now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
 gesture_hold = GestureHold()
+state_machine = StateMachine()
 
 while True:
     now = time.perf_counter()
@@ -32,7 +33,8 @@ while True:
 
     gesture = gesture_from_hands(landmarks.hand_landmarks)
     held = gesture_hold.update(gesture, now)
-    overlay.draw_text(frame, f"{gesture}  {held:.1f}s", y=100)
+    state = state_machine.update(gesture, held)
+    overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s", y=100)
     # Display the frame
     cv2.imshow("Hermes", frame)
 
