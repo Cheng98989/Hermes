@@ -54,7 +54,7 @@ Regola pratica: se un esempio comincia con `mp.solutions.`, è vecchio.
 ### M0 — Ambiente ✅
 venv + `mediapipe`, `opencv-python`, `pynput`.
 
-### M1 — Vedere la mano
+### M1 — Vedere la mano ✅
 Script unico, usa-e-getta.
 - apre la webcam, mostra il frame ribaltato (effetto specchio)
 - MediaPipe individua la mano, i 21 landmark vengono disegnati
@@ -88,73 +88,139 @@ tempo del giro e' spiegato.
   debug, non l'applicazione: quando servira' respiro, si toglie e si recupera
   tutto quel tempo.
 
-### M2 — Prima struttura
-Estrarre da M1 i moduli `camera.py` e `mano.py`. Un `main.py` che li cuce.
-Stesso comportamento di M1, ma diviso. Nessuna funzionalità nuova.
+### M2 — Prima struttura ✅
+Estratti da M1 quattro moduli, `main.py` che li cuce. Stesso comportamento,
+nessuna funzionalità nuova.
 
-### M3 — Primo riconoscimento
-`gesti.py`, funzione **pura**: 21 landmark in ingresso, nome del gesto in uscita.
-Partire dal più semplice: **quante dita sono alzate**.
-- confronto tra la punta del dito e la nocca sottostante
-- il pollice è un caso a parte (si muove lateralmente, non verticalmente)
+- `camera.py` — apertura, verifica, risoluzione **vera** (non quella richiesta),
+  flip a specchio, fallimenti di lettura consecutivi, chiusura
+- `hand.py` — involucro su MediaPipe; espone `CONNECTIONS` come coppie di
+  interi, così nessun altro modulo deve importare MediaPipe
+- `overlay.py` — solo disegno
+- `fps.py` — contatore a finestra scorrevole (`deque`)
 
-Primo test in `tests/`: nessuna webcam coinvolta.
+Deciso qui: **lo stato costoso sta nell'oggetto, i dati di passaggio sono
+parametri.** `Hand` teneva il frame (33 ms di vita) nel costruttore e il
+landmarker (ore di vita) come variabile globale: era rovesciato.
 
-### M4 — Macchina a stati
-`stato.py`, funzione **pura**. Stati `IDLE` / `ATTIVO`.
-- dizionario `TRANSIZIONI` con chiavi `(stato, gesto)`
-- **dwell time**: la posa vale solo se tenuta ~1 secondo → uccide i falsi positivi
-- feedback visivo nella preview (bordo rosso = IDLE, verde = ATTIVO)
+### M3 — Primo riconoscimento ✅
+`gestures.py`, modulo **puro**: importa solo `math`.
 
-Senza il feedback non capisci mai perché non risponde. Non è un extra.
+- `fingers_up()` → insieme delle dita distese. Un dito è disteso quando la
+  punta è più lontana dal polso della nocca media
+- il **pollice** ha una regola sua: stesso criterio ma misurato dalla nocca
+  del mignolo. Dal polso non funziona, perché il polso è quasi sul perno
+  attorno a cui il pollice ruota — e dal centro di una rotazione la distanza
+  non cambia mai
+- `GESTURES`: `frozenset` di dita → nome del gesto. Aggiungere un gesto è
+  una riga
+- nessuna soglia da tarare: ogni test confronta **due distanze**, quindi la
+  dimensione della mano e la distanza dalla camera si semplificano
 
-### M5 — Prima azione reale ⚠️
-`azioni.py` con `pynput`. Cursore in mappatura assoluta:
-`landmark.x * larghezza_schermo`.
+Scartato: normalizzare per la lunghezza del palmo. `palm_size` è una
+proiezione 2D e collassa quando la mano si inclina verso la camera — misurati
+rapporti fino a 34, fisicamente impossibili.
 
-> **VIA DI FUGA OBBLIGATORIA, PRIMA DI ESEGUIRLO.**
-> Quando il programma muove il cursore, potresti non riuscire a rimettere il
-> fuoco sulla finestra per fermarlo. Serve un modo per ucciderlo che non passi
-> dal mouse: un listener globale su ESC, o un tempo massimo di esecuzione.
-> Va scritto *prima* del codice che muove il cursore, non dopo.
+Test in `tests/test_gestures.py`, nessuna webcam coinvolta.
 
-Problemi noti che emergeranno qui:
-- i bordi dell'inquadratura sono scomodi → mappare solo un rettangolo centrale
-- il cursore trema → serve smoothing (media sugli ultimi N frame)
+### M4 — Macchina a stati ✅
+`state.py`, nessun import: né `cv2` né `time`.
 
-### M6 — Eventi discreti
-Il loop gira a 30 fps: un gesto tenuto un secondo = 30 click.
-Trasformare il flusso continuo di gesti in **eventi** (inizio / fine / ripetizione).
-Poi il click.
+- `GestureHold` — trasforma il flusso rumoroso di gesti in "quale gesto, e da
+  quanto". Riceve l'istante da fuori invece di leggere l'orologio
+- `TRANSITIONS` — dizionario `(stato, gesto) → (nuovo stato, secondi richiesti)`.
+  Ogni regola porta con sé il proprio dwell time
+- `StateMachine` — cerca la regola, controlla il tempo, cambia stato
+- bordo colorato in `overlay.py`: rosso `IDLE`, verde `ACTIVE`
 
-### M7 — Comandi desktop
-Tasti multimediali (volume, play/pausa) e scorciatoie. Qui sta il valore d'uso
-reale del progetto: sono azioni discrete, molto più affidabili del cursore.
+Il **timeout di sicurezza** è una sola riga della tabella:
+`(ACTIVE, "none") → (IDLE, 3.0)`. Funziona perché "nessuna mano" è stata
+trattata fin da subito come un gesto normale.
 
-### M8 — Rifiniture e consegna
-Configurazione esterna, README, i 3 screenshot per il prof, repo GitHub.
+Deciso qui: **l'orologio è I/O.** `main.py` legge `perf_counter()` una volta
+per giro e passa lo stesso istante a tutti. Tutti gli altri moduli restano
+testabili con tempi finti — verificare "tenuto per 1,1 secondi" non richiede
+di aspettare 1,1 secondi.
 
 ---
 
-## Punti aperti (da decidere quando ci arriviamo)
+> ⚠️ **Ordine invertito rispetto alla versione precedente di questa scheda.**
+> Il cursore era M5 ed è finito in fondo. Due motivi: è il pezzo tecnicamente
+> più difficile, ed è l'unico che può rendere il computer inutilizzabile se
+> qualcosa va storto. I comandi discreti sono più utili nell'uso reale, sono
+> una riga ciascuno, e permettono di costruire lo strato delle azioni in
+> sicurezza.
 
-- **Come si esce da ATTIVO?** Gesto esplicito o timeout a mano fuori campo?
-- **Il cursore si muove sempre in ATTIVO**, o serve un ulteriore "modo cursore"?
-- **Quale posa attiva?** Criterio: dev'essere scomoda da fare per sbaglio
-  mentre si studia. Con il dwell time il vincolo si allenta parecchio.
+### M5 — Prima azione reale ⚠️
+`actions.py` con `pynput`. **Un comando solo**: volume su.
+
+> **VIA DI FUGA, PRIMA DI SCRIVERE QUALSIASI COSA CHE TOCCHI IL SISTEMA.**
+> Serve un modo garantito di fermare Hermes che non dipenda da Hermes: un
+> listener globale su ESC, o un tempo massimo di esecuzione. Con i tasti
+> multimediali il rischio è basso, ma l'abitudine va presa adesso, non
+> quando arriverà il cursore.
+
+Il problema da risolvere qui: il loop gira a 30 fps, quindi un gesto tenuto
+un secondo sono **trenta comandi**. Serve trasformare il flusso continuo in
+eventi discreti — un comando all'ingresso nel gesto, non a ogni frame.
+
+Dwell corto per i comandi (~0,3 s), diverso da quello degli stati (1 s).
+
+### M6 — Il set di comandi
+Volume giù, play/pausa, e la tabella `gesto → azione` in `ACTIVE`.
+Qui sta il valore d'uso reale del progetto.
+
+### M7 — Il cursore
+Il pezzo difficile, per ultimo, quando tutto il resto è solido.
+Mappatura assoluta: `landmark.x * larghezza_schermo`.
+
+Problemi noti che emergeranno:
+- i bordi dell'inquadratura sono scomodi → mappare solo un rettangolo centrale
+- il cursore trema → smoothing su finestra scorrevole (la stessa `deque` di
+  `fps.py`, ma su posizioni invece che durate)
+
+### M8 — Rifiniture e consegna
+Configurazione esterna, README aggiornato, i 3 screenshot per il prof, repo
+GitHub.
+
+---
+
+## Decisioni prese
+
+- **Attivazione:** palmo aperto tenuto 1 s. **Uscita:** pugno tenuto 1 s,
+  più il timeout automatico a 3 s senza mano.
+- **Dwell:** lungo (1 s) per i cambi di stato, corto (~0,3 s) per i comandi.
+  Entrare deve essere deliberato; una volta dentro, hai già dichiarato che
+  stai parlando a Hermes.
+- **Sui due modi di sbagliare:** dimenticare di spegnere è pericoloso e non
+  te ne accorgi; spegnersi troppo presto è solo fastidioso. Il sistema deve
+  fallire dalla parte innocua → il timeout non è un extra.
+
+## Punti ancora aperti
+
+- **La zona.** Ascoltare solo se la mano è nella parte alta dell'inquadratura:
+  sotto c'è la scrivania dove si scrive. Alzare la mano è già di per sé un
+  gesto volontario.
+- **Il feedback sonoro.** Il bordo colorato serve a chi sviluppa; chi studia
+  guarda il libro, non la preview. Un bip all'ingresso e all'uscita da ACTIVE
+  si sente senza alzare gli occhi.
+- **Il cursore si muove sempre in ACTIVE**, o serve un ulteriore stato
+  `CURSOR`?
 
 ---
 
 ## Nozioni della checklist del prof toccate dal progetto
 
-| Argomento | Dove |
-|---|---|
-| dizionari | M4 transizioni, M5 mappa azioni, config |
-| tuple | chiavi composte, coordinate |
-| set | insieme delle dita alzate |
-| liste | buffer per lo smoothing |
-| funzioni e ambiti | ovunque — è la struttura del progetto |
-| controllo di flusso | il loop principale |
-| math | distanze e angoli tra landmark |
-| strutture dati (coda) | buffer a finestra scorrevole per lo smoothing |
-| algoritmi | smoothing, soglie, riconoscimento |
+| Argomento | Dove | |
+|---|---|---|
+| dizionari | `GESTURES`, `TRANSITIONS`, `STATE_COLORS`, `FINGERS` | ✅ |
+| set / frozenset | insieme delle dita alzate, chiavi di `GESTURES` | ✅ |
+| tuple | chiavi `(stato, gesto)`, valori `(tip, nocca)` | ✅ |
+| funzioni e ambiti | la struttura stessa del progetto | ✅ |
+| controllo di flusso | il loop principale | ✅ |
+| math | `math.hypot` per le distanze | ✅ |
+| strutture dati (coda) | `deque(maxlen=N)` in `fps.py` | ✅ |
+| liste | landmark, `CONNECTIONS`, buffer | ✅ |
+| algoritmi | media su finestra scorrevole, soglie, riconoscimento | ✅ |
+| file I/O | non ancora toccato — arriverà con la configurazione (M8) | ⬜ |
+| Date | `time` misura durate; `datetime` non serve finora | ⬜ |
