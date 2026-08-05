@@ -26,7 +26,6 @@ import pytest
 from hermes.gestures import (
     FINGERS,
     GESTURES,
-    ORIENTED,
     fingers_up,
     gesture_from_hands,
     gesture_name,
@@ -52,28 +51,20 @@ class FakeLandmark:
         self.z = z
 
 
-def make_hand(extended: set[str], pointing_up: bool = True) -> list[FakeLandmark]:
-    """Build 21 fake landmarks with the named fingers extended.
-
-    `pointing_up` turns the whole hand upside down, which is what tells
-    point_up from point_down.
-    """
-    def flip(pos):
-        x, y, z = pos
-        return (x, y, z) if pointing_up else (x, -y, z)
-
-    hand = [FakeLandmark(*flip(WRIST_POS)) for _ in range(21)]
+def make_hand(extended: set[str]) -> list[FakeLandmark]:
+    """Build 21 fake landmarks with the named fingers extended."""
+    hand = [FakeLandmark(*WRIST_POS) for _ in range(21)]
 
     # the MCP knuckles, where the fingers meet the palm. Not used by
     # fingers_up, but palm_size measures the wrist to landmark 9, so leaving
     # them sitting on the wrist would make the palm zero metres long.
     for mcp in (5, 9, 13, 17):
-        hand[mcp] = FakeLandmark(*flip(KNUCKLE_POS))
+        hand[mcp] = FakeLandmark(*KNUCKLE_POS)
 
     for name, (tip, knuckle) in FINGERS.items():
-        hand[knuckle] = FakeLandmark(*flip(KNUCKLE_POS))
+        hand[knuckle] = FakeLandmark(*KNUCKLE_POS)
         hand[tip] = FakeLandmark(
-            *flip(TIP_UP_POS if name in extended else TIP_DOWN_POS)
+            *(TIP_UP_POS if name in extended else TIP_DOWN_POS)
         )
 
     return hand
@@ -134,29 +125,20 @@ def test_the_palm_does_not_change_when_the_fingers_move():
 def test_every_gesture_in_the_table_is_recognised(extended, expected):
     """One case per row of GESTURES, generated from the table itself: add a
     gesture there and it gets tested automatically."""
-    got = gesture_name(make_hand(extended))
-
-    if expected in ORIENTED:
-        # the table name is not final for these: orientation picks the variant
-        assert got in ORIENTED[expected].values()
-    else:
-        assert got == expected
-
-
-def test_orientation_splits_a_gesture_in_two():
-    """Same finger, two meanings - the set alone cannot tell them apart."""
-    assert gesture_name(make_hand({"index"}, pointing_up=True)) == "point_up"
-    assert gesture_name(make_hand({"index"}, pointing_up=False)) == "point_down"
-
-
-def test_a_gesture_without_an_orientation_entry_is_unaffected():
-    assert gesture_name(make_hand({"index", "middle"}, pointing_up=False)) == "victory"
+    assert gesture_name(make_hand(extended)) == expected
 
 
 def test_combination_outside_the_table_is_unknown():
     """Most hand positions are not gestures - while the hand moves, almost
-    every frame is one of them. This must not raise."""
-    assert gesture_name(make_hand({"index", "middle", "ring"})) == "unknown"
+    every frame is one of them. This must not raise.
+
+    Middle and ring together is an awkward pose nobody would bind a command
+    to, which is what makes it a safe example here. If it ever ends up in
+    GESTURES this test will fail and want a different one.
+    """
+    absent = {"middle", "ring"}
+    assert frozenset(absent) not in GESTURES, "pick a combination still unused"
+    assert gesture_name(make_hand(absent)) == "unknown"
 
 
 # --- gesture_from_hands -----------------------------------------------------

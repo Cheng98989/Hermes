@@ -16,7 +16,6 @@ The module imports nothing but `math`, so it can be tested without a webcam.
 import math
 
 WRIST = 0
-INDEX_TIP = 8
 MIDDLE_KNUCKLE = 9
 
 # name -> (tip, middle knuckle)
@@ -34,18 +33,18 @@ FINGERS = {
     "pinky":  (20, 18),
 }
 
+# Counting fingers is the most reliable thing the recogniser does, so the
+# vocabulary is built on it rather than on where the hand points. Orientation
+# was tried and dropped: it needs the hand held at a definite angle, which is
+# uncomfortable at a desk and fragile to detect.
 GESTURES = {
     frozenset():                                      "fist",
     frozenset({"index"}):                             "point",
     frozenset({"index", "middle"}):                   "victory",
+    frozenset({"index", "middle", "ring"}):           "three",
+    
     frozenset({"index", "pinky"}):                    "rock",
     frozenset({"index", "middle", "ring", "pinky"}):  "open_palm",
-}
-
-# Gestures whose meaning depends on which way they point. Same fingers, two
-# names: the finger set alone cannot tell them apart.
-ORIENTED = {
-    "point": {True: "point_up", False: "point_down"},
 }
 
 
@@ -62,14 +61,6 @@ def palm_size(hand) -> float:
     to 0.12 on the hand this was measured with.
     """
     return distance(hand[WRIST], hand[MIDDLE_KNUCKLE])
-
-
-def _points_up(hand) -> bool:
-    """Whether the index finger points up rather than down.
-
-    y grows downwards, so "above" means a smaller y.
-    """
-    return hand[INDEX_TIP].y < hand[WRIST].y
 
 
 def fingers_up(hand) -> set[str]:
@@ -92,13 +83,7 @@ def fingers_up(hand) -> set[str]:
 def gesture_name(hand) -> str:
     """Name of the recognised gesture, or 'unknown' if this combination of
     extended fingers is not in the table."""
-    name = GESTURES.get(frozenset(fingers_up(hand)), "unknown")
-
-    oriented = ORIENTED.get(name)
-    if oriented is not None:
-        name = oriented[_points_up(hand)]
-
-    return name
+    return GESTURES.get(frozenset(fingers_up(hand)), "unknown")
 
 
 def gesture_from_hands(hands) -> str:

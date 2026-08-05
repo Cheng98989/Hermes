@@ -17,8 +17,14 @@ class Overlay:
         self.width = width
         self.height = height
 
-    def draw_landmarks(self, frame: MatLike, result) -> None:
-        for single_hand in result.hand_landmarks:
+    def draw_landmarks(self, frame: MatLike, hands) -> None:
+        """`hands` is a list of hands, each a list of 21 landmarks.
+
+        Takes the list rather than the whole mediapipe result, so the caller
+        can hand over either the raw landmarks or a smoothed copy - and this
+        module stops needing to know the shape of a mediapipe result.
+        """
+        for single_hand in hands:
 
             # CONNECTIONS holds (start, end) index pairs, so a and b are
             # positions inside single_hand

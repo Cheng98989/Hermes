@@ -9,10 +9,16 @@ class Action(NamedTuple):
     repeat: float | None   # seconds between repeats, None = fire once
 
 
+# One finger down, two fingers up: counting is what the recogniser does best,
+# so the commands ride on that rather than on the angle of the hand.
+#
+# open_palm and fist are missing on purpose - they switch Hermes on and off,
+# and the dwell here is shorter than the one the state machine uses, so an
+# action bound to either would fire at the very moment of switching.
 ACTIONS = {
-    "point_up":   Action(Key.media_volume_up,   dwell=0.3, repeat=0.15),
-    "point_down": Action(Key.media_volume_down, dwell=0.3, repeat=0.15),
-    "victory":    Action(Key.media_play_pause,  dwell=0.5, repeat=None),
+    "point":   Action(Key.media_volume_down, dwell=0.3, repeat=0.15),
+    "victory": Action(Key.media_volume_up,   dwell=0.3, repeat=0.15),
+    "rock":    Action(Key.media_play_pause,  dwell=0.5, repeat=None),
 }
 
 class Actions:
