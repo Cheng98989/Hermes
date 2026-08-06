@@ -10,7 +10,7 @@ a list of (instant, gesture) pairs. No webcam, no clock, no waiting.
 """
 
 from hermes.state import ACTIVE, IDLE, StateMachine
-from hermes.timing import GestureHold
+from hermes.filters import Hold
 
 
 def test_starts_idle():
@@ -63,7 +63,7 @@ def test_a_brief_gap_does_not_deactivate():
 
 def test_full_sequence():
     """A plausible run: noise, activation, noise while active, shutdown."""
-    hold = GestureHold()
+    hold = Hold()
     machine = StateMachine()
 
     frames = [

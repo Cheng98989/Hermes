@@ -1,3 +1,19 @@
+"""Turning a stream of noisy per-frame readings into stable answers.
+
+Everything here has the same shape: an object with a memory, fed one reading
+per frame, returning something steadier than what went in. They are signal
+filters in the proper sense - Smoothed is a moving average, Hysteresis is a
+Schmitt trigger, Repeater is a debounce.
+
+**Nothing in this module knows what a hand is.** It receives numbers,
+booleans and instants, and it never reads the clock: main.py reads
+perf_counter() once per frame and hands the same value to everyone. That is
+what makes all of this testable with made-up data and no webcam.
+
+If something you are about to add here needs to know about fingers, gestures
+or states, it belongs in gestures.py or state.py instead.
+"""
+
 from collections import Counter, deque
 from typing import NamedTuple
 
@@ -74,16 +90,16 @@ class Smoothed:
         return Counter(self.values).most_common(1)[0][0]
 
 
-class GestureHold:
-    """Tracks how long the current gesture has been held."""
+class Hold:
+    """How long the value passed in has stayed the same."""
 
     def __init__(self) -> None:
-        self.gesture = None      # which gesture we are watching
+        self.object = None      # which gesture we are watching
         self.since = 0.0         # the instant it started
 
-    def update(self, gesture: str, now: float) -> float:
-        if gesture != self.gesture:
-            self.gesture = gesture
+    def update(self, object, now: float) -> float:
+        if object != self.object:
+            self.object = object
             self.since = now
             return 0.0
         return now - self.since
@@ -112,3 +128,22 @@ class Repeater:
             return True
 
         return False
+
+class Hysteresis:
+    """A switch with two thresholds, so a value hovering near the boundary
+    cannot flip it back and forth."""
+
+    def __init__(self, on_below: float, off_above: float) -> None:
+        if on_below >= off_above:
+            raise ValueError(f"on_below ({on_below}) must be less than off_above ({off_above})")
+        self.on_below_limit = on_below
+        self.off_above_limit = off_above
+        self.state = False
+
+    def update(self, value: float) -> bool:
+        if value >= self.off_above_limit:
+            self.state = False
+        if value <= self.on_below_limit:
+            self.state = True
+        return self.state
+        

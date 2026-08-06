@@ -1,6 +1,6 @@
 from pynput.keyboard import Controller, Key
 from typing import NamedTuple
-from hermes.timing import Repeater
+from hermes.filters import Repeater
 
 
 class Action(NamedTuple):

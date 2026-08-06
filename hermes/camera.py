@@ -7,7 +7,7 @@ class Camera:
 
     MAX_FAILURES = 20      # consecutive failed reads before giving up
 
-    def __init__(self, index: int = 0, width: int = 640, height: int = 480) -> None:
+    def __init__(self, index: int = 0, width: int = 1280, height: int = 720) -> None:
         self.capture = cv2.VideoCapture(index)
         if not self.capture.isOpened():
             raise RuntimeError(f"Cannot open webcam {index}")

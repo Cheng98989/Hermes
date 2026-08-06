@@ -4,9 +4,9 @@ from cv2.typing import MatLike
 from hermes.hand import CONNECTIONS
 
 STATE_COLORS = {
-        "IDLE":   (0, 0, 255),      # red
-        "ACTIVE": (0, 255, 0),      # green
-    }
+    "IDLE":   (0, 0, 255),      # red
+    "ACTIVE": (0, 255, 0),      # green
+}
 
 class Overlay:
     """Draws landmarks and debug info on top of a frame"""
@@ -54,7 +54,7 @@ class Overlay:
     def draw_text(self, frame: MatLike, text: str, y: int = 70) -> None:
         cv2.putText(
         frame, text, (10, y),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2,
+        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2,
         )
 
     def draw_state_border(self, frame: MatLike, state: str, thickness: int = 8) -> None:

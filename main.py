@@ -6,9 +6,9 @@ from hermes.camera import Camera
 from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
-from hermes.gestures import gesture_from_hands
-from hermes.state import StateMachine, ACTIVE
-from hermes.timing import GestureHold, Smoothed, SmoothedLandmarks
+from hermes.gestures import gesture_from_hands, pinch_distance, pinch_guard_ok
+from hermes.state import StateMachine, ACTIVE, DragTracker
+from hermes.filters import Hold, Smoothed, SmoothedLandmarks, Hysteresis
 from hermes.killswitch import KillSwitch
 from hermes.actions import Actions
 
@@ -26,12 +26,13 @@ hand = Hand(number_of_hands=1)
 now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
-gesture_hold = GestureHold()
-landmark_smoother = SmoothedLandmarks(window=5)     # world landmarks, for recognition
-drawing_smoother = SmoothedLandmarks(window=5)      # normalised ones, for the preview
-gesture_smoother = Smoothed(window=3)
+gesture_hold = Hold()
+landmark_smoother = SmoothedLandmarks(window=10)     # world landmarks, for recognition
+drawing_smoother = SmoothedLandmarks(window=10)      # normalised ones, for the preview
+gesture_smoother = Smoothed(window=5)
 state_machine = StateMachine()
-
+pinch_switch = Hysteresis(on_below=0.20, off_above=0.50)
+drag_tracker = DragTracker(on_below=0.20, off_above=0.50,dwell=0.1)
 kill_switch = KillSwitch()
 actions = Actions()
 last_command = ""
@@ -62,13 +63,17 @@ while True:
     # numbers instead of mediapipe's frame-to-frame guesses.
     hands = landmark_smoother.update(landmarks.hand_world_landmarks)
     gesture = gesture_smoother.update(gesture_from_hands(hands))
+
+    distance = pinch_distance(hands)
+    guard = pinch_guard_ok(hands)
+    drag_status = drag_tracker.update(distance,guard,now)
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
 
     fired = actions.update(gesture, held, now, state == ACTIVE)
     if fired:
         last_command = fired
-    overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command}", y=100)
+    overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command} | {distance:.2f} | drag_status={drag_status} | guard: {guard}", y=100)
     overlay.draw_state_border(frame, state)
 
     # Display the frame
