@@ -1,11 +1,12 @@
 import cv2
 from cv2.typing import MatLike
-
+from hermes.cursor import ZONE_MIN, ZONE_MAX
 from hermes.hand import CONNECTIONS
 
 STATE_COLORS = {
     "IDLE":   (0, 0, 255),      # red
     "ACTIVE": (0, 255, 0),      # green
+    "CURSOR": (255, 0, 0),      # blue
 }
 
 class Overlay:
@@ -60,3 +61,20 @@ class Overlay:
     def draw_state_border(self, frame: MatLike, state: str, thickness: int = 8) -> None:
         color = STATE_COLORS.get(state, (128, 128, 128))    # grey for unknown states
         cv2.rectangle(frame, (0, 0), (self.width - 1, self.height - 1), color, thickness) 
+
+    def draw_mouse_mapping_area(self, frame: MatLike) -> None:
+        h,w = frame.shape[:2]
+
+        x1 = int(w * ZONE_MIN)
+        y1 = int(h * ZONE_MIN)
+
+        x2 = int(w * ZONE_MAX)
+        y2 = int(h * ZONE_MAX)
+
+        cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x2, y2),
+            (0, 255, 0),   # verde
+            1              # spessore del bordo (rettangolo vuoto)
+        )

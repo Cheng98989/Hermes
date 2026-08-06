@@ -4,7 +4,7 @@ from hermes.filters import Hold, Hysteresis
 class DragTracker:
     """Two phases: strict to start dragging, permissive to keep dragging."""
 
-    def __init__(self, on_below=0.25, off_above=0.40, dwell=0.1) -> None:
+    def __init__(self, on_below=0.25, off_above=0.40, dwell=0.0) -> None:
         self.switch = Hysteresis(on_below, off_above)
         self.hold = Hold()
         self.dwell = dwell
@@ -26,12 +26,16 @@ class DragTracker:
 
 IDLE = "IDLE"
 ACTIVE = "ACTIVE"
+CURSOR = "CURSOR"
 
 # (current state, gesture) -> (new state, seconds it must be held)
 TRANSITIONS = {
     (IDLE,   "open_palm"): (ACTIVE, 1.0),
     (ACTIVE, "fist"):      (IDLE,   1.0),
     (ACTIVE, "none"):      (IDLE,   3.0),
+    (ACTIVE, "point"):     (CURSOR, 0.5),
+    (CURSOR, "open_palm"): (ACTIVE, 0.5),
+    (CURSOR, "none"):      (IDLE,   3.0),
 }
 
 

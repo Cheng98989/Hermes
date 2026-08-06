@@ -2,9 +2,13 @@
 
 Control the desktop with hand gestures seen through a webcam.
 
-**Status: work in progress.** Hermes recognises hand gestures and sends media
-keys - volume up, volume down, play/pause. The mouse cursor comes later (see
-`ROADMAP.md`).
+**Status: work in progress.** Hermes sends media keys - volume up, volume
+down, play/pause - and moves the mouse pointer, with click and drag by
+pinching thumb and index together.
+
+`ROADMAP.md` has what is left to do. `ARCHITECTURE.md` explains how it works,
+why it is built this way, and which approaches were tried and measured before
+being rejected.
 
 ---
 
@@ -66,23 +70,51 @@ frame gets a border coloured by state: red for `IDLE`, green for `ACTIVE`.
 
 ---
 
-## Switching on and off
+## The three modes
 
 Hermes starts in `IDLE` and ignores everything except the gesture that wakes
-it. Commands only fire in `ACTIVE`.
+it. Media commands fire only in `ACTIVE`; the pointer moves only in `CURSOR`.
 
 | From | Gesture | Held for | To |
 |---|---|---|---|
 | `IDLE` | open palm | 1 s | `ACTIVE` |
 | `ACTIVE` | fist | 1 s | `IDLE` |
-| `ACTIVE` | no hand in frame | 3 s | `IDLE` |
+| `ACTIVE` | point | 0.5 s | `CURSOR` |
+| `CURSOR` | open palm | 0.5 s | `ACTIVE` |
+| `ACTIVE` or `CURSOR` | no hand in frame | 3 s | `IDLE` |
 
 The last row is the safety timeout: forgetting to switch Hermes off is the
 dangerous mistake and you do not notice it, while switching off too early is
 merely annoying - so it fails towards off. It works because "no hand at all"
 is treated as a gesture of its own (`none`), distinct from `unknown`.
 
-Those three rules are the whole of `TRANSITIONS` in `hermes/state.py`.
+There is deliberately **no** way to leave `CURSOR` with a fist: while
+pinching, the fingers read as one, so that rule would end cursor mode in the
+middle of a drag.
+
+Those rules are the whole of `TRANSITIONS` in `hermes/state.py`.
+
+---
+
+## Moving the pointer
+
+In `CURSOR` the pointer follows the base knuckle of the middle finger - not a
+fingertip, because fingertips move when you pinch and a click must not drag
+the pointer with it.
+
+Only the **middle 40% of the camera view** maps to the whole screen. The
+corners are neither comfortable to reach nor well tracked, and pushing the
+hand that far takes the fingers out of frame, which loses the pinch. A green
+rectangle in the preview shows the active area; outside it the pointer sticks
+to the screen edge.
+
+**Pinch thumb and index together to hold the left button.** Pinch and release
+for a click; pinch, move and release to drag. The other three fingers must be
+closed for a pinch to register - that is the shape a hand already has while
+pointing, and it rejects the half-open poses a hand passes through on its way
+somewhere else.
+
+The pointer covers the primary monitor only.
 
 ---
 
@@ -95,6 +127,8 @@ Those three rules are the whole of `TRANSITIONS` in `hermes/state.py`.
 | `victory` | index, middle |
 | `three` | index, middle, ring |
 | `rock` | index, pinky |
+| `rock_with_ring` | index, ring, pinky |
+| `middle_ring_pinky` | middle, ring, pinky |
 | `open_palm` | index, middle, ring, pinky |
 
 Anything else reads `unknown`, and no hand in frame reads `none`.
@@ -127,18 +161,23 @@ opposite answers and no amount of voting recovers it.
 
 ## Commands
 
+Only in `ACTIVE`.
+
 | Gesture | Key sent | Fires after | Then |
 |---|---|---|---|
-| `point` | volume down | 0.3 s | repeats every 0.15 s while held |
-| `victory` | volume up | 0.3 s | repeats every 0.15 s while held |
+| `victory` | volume up | 0.5 s | repeats every 0.3 s while held |
+| `middle_ring_pinky` | volume down | 0.5 s | repeats every 0.3 s while held |
 | `rock` | play / pause | 0.5 s | once per hold |
 
 The dwell exists because the loop runs at 30 fps: a gesture held for a second
-is thirty frames, and without it that would be thirty keystrokes.
+is thirty frames, and without it that would be thirty keystrokes. Volume
+repeats because one press moves it 2%; play/pause fires once, because firing
+it twice puts you back where you started.
 
-`open_palm` and `fist` are deliberately bound to nothing - they switch Hermes
-on and off, and the dwell here is shorter than the one the state machine uses,
-so a command bound to either would fire at the very moment of switching.
+`open_palm`, `fist` and `point` are deliberately bound to nothing - they
+change state, and the dwell here is shorter than the one the state machine
+uses, so a command bound to any of them would fire at the very moment of
+switching.
 
 The table is `ACTIONS` in `hermes/actions.py`.
 
@@ -173,8 +212,9 @@ hermes/
   gestures.py        landmarks -> extended fingers -> gesture name  [pure]
   filters.py         noisy stream -> steady answer: Hold, Repeater,
                      Smoothed, SmoothedLandmarks, Hysteresis  [pure]
-  state.py           IDLE / ACTIVE, and the pinch/drag phases  [pure]
+  state.py           IDLE / ACTIVE / CURSOR, and the pinch phases  [pure]
   actions.py         gesture -> media key, sent with pynput
+  cursor.py          a point in the frame -> the mouse pointer and its button
   killswitch.py      global Esc listener that stops the app
   overlay.py         drawing on the frame
   fps.py             sliding-window fps counter
@@ -183,7 +223,8 @@ tests/
   test_gestures.py   fingers, gesture names
   test_state.py      the state machine
   test_filters.py    holds, repeats and smoothing
-ROADMAP.md           milestones, decisions and measurements
+ARCHITECTURE.md      how it works, why, and what was rejected
+ROADMAP.md           milestones and what is left
 ```
 
 The modules marked pure import nothing but the standard library: data in, data

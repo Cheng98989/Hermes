@@ -6,12 +6,12 @@ from hermes.camera import Camera
 from hermes.hand import Hand
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
-from hermes.gestures import gesture_from_hands, pinch_distance, pinch_guard_ok
-from hermes.state import StateMachine, ACTIVE, DragTracker
-from hermes.filters import Hold, Smoothed, SmoothedLandmarks, Hysteresis
+from hermes.gestures import gesture_from_hands, pinch_distance, pinch_guard_ok, pinch_point
+from hermes.state import StateMachine, ACTIVE, CURSOR, DragTracker
+from hermes.filters import Hold, Smoothed, SmoothedLandmarks
 from hermes.killswitch import KillSwitch
 from hermes.actions import Actions
-
+from hermes.cursor import Cursor, screen_size
 
 parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
 parser.add_argument(
@@ -27,15 +27,17 @@ now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
 gesture_hold = Hold()
-landmark_smoother = SmoothedLandmarks(window=10)     # world landmarks, for recognition
-drawing_smoother = SmoothedLandmarks(window=10)      # normalised ones, for the preview
-gesture_smoother = Smoothed(window=5)
+landmark_smoother = SmoothedLandmarks(window=7)     # world landmarks, for recognition
+drawing_smoother = SmoothedLandmarks(window=7)      # normalised ones, for the preview
+gesture_smoother = Smoothed(window=3)
 state_machine = StateMachine()
-pinch_switch = Hysteresis(on_below=0.20, off_above=0.50)
-drag_tracker = DragTracker(on_below=0.20, off_above=0.50,dwell=0.1)
+
+drag_tracker = DragTracker(on_below=0.20, off_above=0.30,dwell=0.1)
 kill_switch = KillSwitch()
 actions = Actions()
+cursor = Cursor(*screen_size())
 last_command = ""
+
 while True:
     now = time.perf_counter()
 
@@ -51,12 +53,13 @@ while True:
     landmarks = hand.get_all_landmarks(frame, now)
     # the preview is cosmetic: --raw-landmarks shows what mediapipe actually
     # reported, which is the honest view when something looks wrong
+    smoothed_2d_landmark = drawing_smoother.update(landmarks.hand_landmarks)
     if args.raw_landmarks:
         overlay.draw_landmarks(frame, landmarks.hand_landmarks)
     else:
-        overlay.draw_landmarks(frame, drawing_smoother.update(landmarks.hand_landmarks))
+        overlay.draw_landmarks(frame, smoothed_2d_landmark)
     overlay.draw_fps(frame, fps)
-
+    overlay.draw_mouse_mapping_area(frame)
     # Recognition runs on the world landmarks (real 3D, in metres); drawing
     # uses the normalised ones above, because those are what map to pixels.
     # Smoothing comes first, so every measurement downstream sees steady
@@ -70,12 +73,16 @@ while True:
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
 
+    mouse_position = pinch_point(smoothed_2d_landmark)
+    if state == CURSOR and mouse_position is not None:
+        cursor.move_to(*mouse_position) 
+    cursor.set_pressed(drag_status and state == CURSOR)      # ogni frame, sempre
+    
     fired = actions.update(gesture, held, now, state == ACTIVE)
     if fired:
         last_command = fired
     overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command} | {distance:.2f} | drag_status={drag_status} | guard: {guard}", y=100)
     overlay.draw_state_border(frame, state)
-
     # Display the frame
     cv2.imshow("Hermes", frame)
 

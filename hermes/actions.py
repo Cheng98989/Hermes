@@ -16,8 +16,8 @@ class Action(NamedTuple):
 # and the dwell here is shorter than the one the state machine uses, so an
 # action bound to either would fire at the very moment of switching.
 ACTIONS = {
-    "point":   Action(Key.media_volume_down, dwell=0.3, repeat=0.15),
-    "victory": Action(Key.media_volume_up,   dwell=0.3, repeat=0.15),
+    "victory": Action(Key.media_volume_up,   dwell=0.5, repeat=0.30),
+    "middle_ring_pinky": Action(Key.media_volume_down,   dwell=0.5, repeat=0.30),
     "rock":    Action(Key.media_play_pause,  dwell=0.5, repeat=None),
 }
 

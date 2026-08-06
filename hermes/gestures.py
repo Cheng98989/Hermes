@@ -44,8 +44,10 @@ GESTURES = {
     frozenset({"index"}):                             "point",
     frozenset({"index", "middle"}):                   "victory",
     frozenset({"index", "middle", "ring"}):           "three",
+    frozenset({"middle", "ring", "pinky"}):           "middle_ring_pinky",
 
     frozenset({"index", "pinky"}):                    "rock",
+    frozenset({"index", "ring", "pinky"}):            "rock_with_ring",
     frozenset({"index", "middle", "ring", "pinky"}):  "open_palm",
 }
 
@@ -99,6 +101,7 @@ def pinch_distance(hands) -> float:
     hand = hands[0]
     return distance_2d(hand[THUMB_TIP], hand[INDEX_TIP]) / palm_size(hand)
 
+
 def fingers_up(hand) -> set[str]:
     """Which fingers are extended.
 
@@ -132,10 +135,41 @@ def gesture_from_hands(hands) -> str:
 GUARD_FINGERS = {"middle", "ring", "pinky"}
 
 def pinch_guard_ok(hands) -> bool:
-    """Whether the fingers not involved in the pinch are in a definite
-    position - all extended or all closed, never halfway."""
+    """Whether the hand is in the posture a pinch is allowed from: middle,
+    ring and pinky all closed.
+
+    That is the shape a hand already has while pointing, so the guard costs
+    nothing to satisfy on purpose and rejects the half-open poses a hand
+    passes through on its way somewhere else.
+
+    The index is not checked. While pinching it bends to reach the thumb, so
+    whether it counts as extended depends on the angle - an unreliable thing
+    to gate on.
+    """
     if not hands:
         return False
-    fingers = fingers_up(hands[0])
-    guarded = fingers & GUARD_FINGERS
-    return guarded == GUARD_FINGERS or not guarded
+
+    guarded = fingers_up(hands[0]) & GUARD_FINGERS
+    return not guarded
+
+
+def pinch_point(hands) -> tuple[float, float] | None:
+    """Where the pointer should be, as a point 0..1 across the frame.
+
+    The middle knuckle, not a fingertip. Fingertips move when you pinch, so
+    anchoring there dragged the cursor sideways at the very moment of
+    clicking - and a click must not move the pointer. The knuckle is rigid
+    relative to the wrist, so the fingers can do anything without shifting it.
+
+    Preferred over the wrist for the same reason but in the other direction:
+    it sits nearer the middle of the hand, so reaching the edge of the active
+    zone leaves less of the hand outside the frame.
+
+    Returns None when no hand is in frame, so the caller can leave the
+    pointer where it is rather than move it somewhere arbitrary.
+    """
+    if not hands:
+        return None
+
+    hand = hands[0]
+    return hand[MIDDLE_KNUCKLE].x, hand[MIDDLE_KNUCKLE].y

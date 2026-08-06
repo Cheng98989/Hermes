@@ -108,10 +108,10 @@ landmarker (ore di vita) come variabile globale: era rovesciato.
 
 - `fingers_up()` → insieme delle dita distese. Un dito è disteso quando la
   punta è più lontana dal polso della nocca media
-- il **pollice** ha una regola sua: stesso criterio ma misurato dalla nocca
-  del mignolo. Dal polso non funziona, perché il polso è quasi sul perno
-  attorno a cui il pollice ruota — e dal centro di una rotazione la distanza
-  non cambia mai
+- il **pollice** ha richiesto una regola sua — misurata dalla nocca del
+  mignolo, perché il polso è quasi sul perno attorno a cui ruota, e dal centro
+  di una rotazione la distanza non cambia mai. **Poi è stato tolto del tutto**:
+  vedi `ARCHITECTURE.md`, sezione "tried and rejected"
 - `GESTURES`: `frozenset` di dita → nome del gesto. Aggiungere un gesto è
   una riga
 - nessuna soglia da tarare: ogni test confronta **due distanze**, quindi la
@@ -151,61 +151,63 @@ di aspettare 1,1 secondi.
 > una riga ciascuno, e permettono di costruire lo strato delle azioni in
 > sicurezza.
 
-### M5 — Prima azione reale ⚠️
-`actions.py` con `pynput`. **Un comando solo**: volume su.
+### M5 — Comandi multimediali ✅
+`actions.py` con `pynput`. Tasti media: volume su, volume giù, play/pausa.
 
-> **VIA DI FUGA, PRIMA DI SCRIVERE QUALSIASI COSA CHE TOCCHI IL SISTEMA.**
-> Serve un modo garantito di fermare Hermes che non dipenda da Hermes: un
-> listener globale su ESC, o un tempo massimo di esecuzione. Con i tasti
-> multimediali il rischio è basso, ma l'abitudine va presa adesso, non
-> quando arriverà il cursore.
+- **via di fuga scritta per prima**: `ESC` globale su un thread suo, così
+  Hermes si ferma anche quando la sua finestra non ha il fuoco
+- `Repeater` risolve il problema della ripetizione: il loop gira a 30 fps,
+  quindi un gesto tenuto un secondo sarebbero trenta pressioni. Il volume si
+  ripete mentre tieni, il play/pausa scatta una volta sola
+- ogni azione porta con sé i propri tempi in `ACTIONS`
 
-Il problema da risolvere qui: il loop gira a 30 fps, quindi un gesto tenuto
-un secondo sono **trenta comandi**. Serve trasformare il flusso continuo in
-eventi discreti — un comando all'ingresso nel gesto, non a ogni frame.
+### M6 — Il cursore e la pinza ✅
+Terzo stato `CURSOR`, `cursor.py`, e la pinza come tasto del mouse.
 
-Dwell corto per i comandi (~0,3 s), diverso da quello degli stati (1 s).
+- il puntatore segue la **nocca del medio**, non una punta: le punte si
+  spostano quando pizzichi, e un click non deve trascinare il cursore
+- solo il **40% centrale** del frame mappa su tutto lo schermo
+- `Hysteresis` per il rilascio, `DragTracker` per le due fasi
+- `set_pressed(bool)` invece di `press`/`release`
 
-### M6 — Il set di comandi
-Volume giù, play/pausa, e la tabella `gesto → azione` in `ACTIVE`.
-Qui sta il valore d'uso reale del progetto.
+Le ragioni di ognuna di queste scelte, e le misure da cui vengono, stanno in
+`ARCHITECTURE.md`.
 
-### M7 — Il cursore
-Il pezzo difficile, per ultimo, quando tutto il resto è solido.
-Mappatura assoluta: `landmark.x * larghezza_schermo`.
+### M7 — Rifiniture e consegna
+Quello che manca prima del 27 agosto.
 
-Problemi noti che emergeranno:
-- i bordi dell'inquadratura sono scomodi → mappare solo un rettangolo centrale
-- il cursore trema → smoothing su finestra scorrevole (la stessa `deque` di
-  `fps.py`, ma su posizioni invece che durate)
+**Necessario:**
+- i 3 screenshot per il prof
+- una passata al README con l'app finita
 
-### M8 — Rifiniture e consegna
-Configurazione esterna, README aggiornato, i 3 screenshot per il prof, repo
-GitHub.
+**Importante:**
+- **test per `cursor.py`, `actions.py` e le funzioni della pinza.** Sono gli
+  unici pezzi senza. Un `X or not X` nella prima versione della guardia la
+  rendeva sempre vera: un test l'avrebbe presa in due secondi
+- **potare il vocabolario.** Otto gesti, diversi dei quali scomodi da fare.
+  Meno gesti affidabili valgono più di tanti incerti
+
+**Se resta tempo:**
+- configurazione su file — è anche l'unica voce della checklist del prof
+  ancora non toccata (file I/O)
+- feedback sonoro: un bip entrando e uscendo da `ACTIVE`. Il bordo colorato
+  serve a chi sviluppa, non a chi studia guardando un libro
+- modalità silenziosa senza preview: recupera i ~13 ms per frame che costa
+- secondo monitor: adesso il cursore copre solo lo schermo primario
 
 ---
 
-## Decisioni prese
-
-- **Attivazione:** palmo aperto tenuto 1 s. **Uscita:** pugno tenuto 1 s,
-  più il timeout automatico a 3 s senza mano.
-- **Dwell:** lungo (1 s) per i cambi di stato, corto (~0,3 s) per i comandi.
-  Entrare deve essere deliberato; una volta dentro, hai già dichiarato che
-  stai parlando a Hermes.
-- **Sui due modi di sbagliare:** dimenticare di spegnere è pericoloso e non
-  te ne accorgi; spegnersi troppo presto è solo fastidioso. Il sistema deve
-  fallire dalla parte innocua → il timeout non è un extra.
-
 ## Punti ancora aperti
 
-- **La zona.** Ascoltare solo se la mano è nella parte alta dell'inquadratura:
-  sotto c'è la scrivania dove si scrive. Alzare la mano è già di per sé un
-  gesto volontario.
-- **Il feedback sonoro.** Il bordo colorato serve a chi sviluppa; chi studia
-  guarda il libro, non la preview. Un bip all'ingresso e all'uscita da ACTIVE
-  si sente senza alzare gli occhi.
-- **Il cursore si muove sempre in ACTIVE**, o serve un ulteriore stato
-  `CURSOR`?
+- **La zona alta dell'inquadratura.** Ascoltare solo se la mano è alzata:
+  sotto c'è la scrivania dove si scrive. Alzare la mano è già un gesto
+  volontario, e restringerebbe molto i falsi positivi.
+- **Il vocabolario è cresciuto senza potature.** `three`, `rock_with_ring` e
+  `middle_ring_pinky` sono pose scomode; `three` non ha nemmeno un comando.
+- **Feedback della presa.** Sapere se la pinza sarebbe riconosciuta *prima*
+  di stringere. Cambiare il cursore di sistema è stato scartato (globale, e
+  resta cambiato se l'app crasha); una finestrella sempre in primo piano
+  sarebbe la strada pulita.
 
 ---
 
@@ -213,14 +215,14 @@ GitHub.
 
 | Argomento | Dove | |
 |---|---|---|
-| dizionari | `GESTURES`, `TRANSITIONS`, `STATE_COLORS`, `FINGERS` | ✅ |
-| set / frozenset | insieme delle dita alzate, chiavi di `GESTURES` | ✅ |
-| tuple | chiavi `(stato, gesto)`, valori `(tip, nocca)` | ✅ |
+| dizionari | `GESTURES`, `TRANSITIONS`, `ACTIONS`, `STATE_COLORS`, `FINGERS` | ✅ |
+| set / frozenset | insieme delle dita alzate, chiavi di `GESTURES`, `&` nella guardia | ✅ |
+| tuple | chiavi `(stato, gesto)`, `NamedTuple` per `Action` e `Point` | ✅ |
 | funzioni e ambiti | la struttura stessa del progetto | ✅ |
-| controllo di flusso | il loop principale | ✅ |
-| math | `math.hypot` per le distanze | ✅ |
-| strutture dati (coda) | `deque(maxlen=N)` in `fps.py` | ✅ |
+| controllo di flusso | il loop principale, le macchine a stati | ✅ |
+| math | `hypot`, `dist`, `inf` | ✅ |
+| strutture dati (coda) | `deque(maxlen=N)` in `fps.py` e negli smorzatori | ✅ |
 | liste | landmark, `CONNECTIONS`, buffer | ✅ |
-| algoritmi | media su finestra scorrevole, soglie, riconoscimento | ✅ |
-| file I/O | non ancora toccato — arriverà con la configurazione (M8) | ⬜ |
-| Date | `time` misura durate; `datetime` non serve finora | ⬜ |
+| algoritmi | media mobile, isteresi, fronti, soglie | ✅ |
+| Date | `time` misura durate; `datetime` non serve | ⬜ |
+| file I/O | manca — arriverà con la configurazione | ⬜ |
