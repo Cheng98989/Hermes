@@ -11,8 +11,8 @@ from pynput.mouse import Button, Controller
 #
 # Narrower zone: smaller movements cover the screen, less precision.
 # Wider zone: more precision, but the hand has to travel further.
-ZONE_MIN = 0.3
-ZONE_MAX = 0.7
+ZONE_MIN = 0.25
+ZONE_MAX = 0.75
 
 def screen_size() -> tuple[int, int]:
     """Size of the primary monitor in pixels.
@@ -53,11 +53,20 @@ class Cursor:
         self.screen_size = (screen_width, screen_height)
         self._pressed = False
 
+    def move_to_pixels(self, x: float, y: float) -> tuple[int, int]:
+        """Move the pointer to a point already in screen pixels.
+
+        Separate from move_to so a caller can put something between the
+        mapping and the mouse - the dead zone has to work in pixels, because
+        that is the unit a tremor is judged in.
+        """
+        position = (int(x), int(y))
+        self._mouse.position = position
+        return position
+
     def move_to(self, x: float, y: float) -> tuple[int, int]:
         """Move the pointer. x and y are 0..1 across the camera frame."""
-        px, py = to_screen(x, y, *self.screen_size)
-        self._mouse.position = (px, py)
-        return (px, py)
+        return self.move_to_pixels(*to_screen(x, y, *self.screen_size))
 
     def set_pressed(self, pressed: bool) -> None:
         """Hold or release the left button.

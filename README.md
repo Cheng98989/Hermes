@@ -211,7 +211,7 @@ hermes/
   hand.py            mediapipe wrapper: frame -> 21 landmarks
   gestures.py        landmarks -> extended fingers -> gesture name  [pure]
   filters.py         noisy stream -> steady answer: Hold, Repeater,
-                     Smoothed, SmoothedLandmarks, Hysteresis  [pure]
+                     Hysteresis, OneEuroFilter, DeadZone  [pure]
   state.py           IDLE / ACTIVE / CURSOR, and the pinch phases  [pure]
   actions.py         gesture -> media key, sent with pynput
   cursor.py          a point in the frame -> the mouse pointer and its button
@@ -223,6 +223,7 @@ tests/
   test_gestures.py   fingers, gesture names
   test_state.py      the state machine
   test_filters.py    holds, repeats and smoothing
+  test_pointer.py    the palm anchor, the dead zone and the jitter meter
 ARCHITECTURE.md      how it works, why, and what was rejected
 ROADMAP.md           milestones and what is left
 ```

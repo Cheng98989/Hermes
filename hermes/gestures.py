@@ -20,6 +20,16 @@ THUMB_TIP = 4
 INDEX_TIP = 8
 MIDDLE_KNUCKLE = 9
 
+# The four MCP knuckles: the points that do not move when the fingers do.
+#
+# The wrist is just as rigid and is deliberately left out. It sits far enough
+# down the hand that averaging it in would drag the anchor towards it, and the
+# wrist was already rejected as an anchor for exactly that reason - with the
+# anchor that low, reaching the edge of the active zone takes the fingers out
+# of frame. The centre of these four lands next to landmark 9, so the active
+# zone stays tuned the way it was.
+ANCHOR_POINTS = (5, 9, 13, 17)
+
 # name -> (tip, middle knuckle)
 #
 # The thumb is deliberately absent. It folds sideways rather than curling, and
@@ -153,31 +163,34 @@ def pinch_guard_ok(hands) -> bool:
     return not guarded
 
 
-def pinch_point(hands) -> tuple[float, float] | None:
-    """Where the pointer should be, as a point 0..1 across the frame.
+def palm_point(hands) -> tuple[float, float] | None:
+    """Where the pointer should be: the centre of the palm, 0..1 across the frame.
 
-    The middle knuckle, not a fingertip. Fingertips move when you pinch, so
-    anchoring there dragged the cursor sideways at the very moment of
-    clicking - and a click must not move the pointer. The knuckle is rigid
-    relative to the wrist, so the fingers can do anything without shifting it.
+    The four MCP knuckles averaged, rather than knuckle 9 on its own. They are
+    all rigid - none of them move when the fingers do - so averaging them is a
+    spatial mean, not a temporal one, and costs no lag whatsoever. What it
+    buys is the cancellation of part of the noise mediapipe puts on each
+    landmark independently.
 
-    Preferred over the wrist for the same reason but in the other direction:
-    it sits nearer the middle of the hand, so reaching the edge of the active
-    zone leaves less of the hand outside the frame.
+    That noise is worth more than it looks. The active zone is half the frame
+    wide and covers the whole screen, so on a 1920px monitor one normalised
+    unit is 3840 pixels, and 0.001 of jitter is four pixels of visible
+    tremor. The anchor is the one number in the pipeline amplified like
+    that.
 
-    Returns None when no hand is in frame, so the caller can leave the
-    pointer where it is rather than move it somewhere arbitrary.
+    Averaging only pays to the extent the noise is independent between
+    landmarks, and mediapipe regresses the whole hand in one pass, so expect
+    rather less than the factor of two the arithmetic promises. Measure it.
+
+    Returns None when no hand is in frame, so the caller can leave the pointer
+    where it is rather than move it somewhere arbitrary.
     """
     if not hands:
         return None
 
     hand = hands[0]
-    return hand[MIDDLE_KNUCKLE].x, hand[MIDDLE_KNUCKLE].y
-
-STABLE_POINTS = {
-    0,   # wrist
-    5,   # index MCP
-    9,   # middle MCP
-    13,  # ring MCP
-    17   # pinky MCP
-}
+    points = [hand[i] for i in ANCHOR_POINTS]
+    return (
+        sum(p.x for p in points) / len(points),
+        sum(p.y for p in points) / len(points),
+    )

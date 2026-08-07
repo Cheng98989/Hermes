@@ -2,8 +2,9 @@
 
 Everything here has the same shape: an object with a memory, fed one reading
 per frame, returning something steadier than what went in. They are signal
-filters in the proper sense - Smoothed is a moving average, Hysteresis is a
-Schmitt trigger, Repeater is a debounce.
+filters in the proper sense - OneEuroFilter is an adaptive low-pass,
+Hysteresis is a Schmitt trigger, Repeater is a debounce, DeadZone is a
+Schmitt trigger on a position.
 
 **Nothing in this module knows what a hand is.** It receives numbers,
 booleans and instants, and it never reads the clock: main.py reads
@@ -14,9 +15,9 @@ If something you are about to add here needs to know about fingers, gestures
 or states, it belongs in gestures.py or state.py instead.
 """
 import math
-from collections import Counter, deque
+from collections import deque
 from typing import NamedTuple
-from hermes.gestures import STABLE_POINTS
+
 
 class Point(NamedTuple):
     """A landmark stripped down to what the rest of the code reads."""
@@ -24,70 +25,6 @@ class Point(NamedTuple):
     x: float
     y: float
     z: float
-
-
-class SmoothedLandmarks:
-    """Averages every landmark position over the last few frames.
-
-    Applied straight after detection, so everything downstream - curl,
-    distances, directions, and any measure not invented yet - works on clean
-    numbers. Smoothing here rather than inside gestures.py keeps that module
-    pure: it has no memory of previous frames and stays testable with made-up
-    data.
-
-    Smoothing the numbers beats smoothing the decisions. Once a value has
-    been compared against a threshold, 0.58 and 0.62 have become "down" and
-    "up" - two opposite answers - and no amount of voting recovers the fact
-    that they were the same reading with a little noise on it.
-    """
-
-    def __init__(self, window: int = 5) -> None:
-        self.frames = deque(maxlen=window)
-
-    def update(self, hands: list) -> list:
-        """Takes result.hand_world_landmarks, returns the same shape with the
-        first hand averaged. Only the first hand is smoothed, because it is
-        the only one anything reads."""
-        if not hands:
-            # the hand left: drop the history, or when it comes back the
-            # average would drag it towards where it used to be
-            self.frames.clear()
-            return []
-
-        hand = hands[0]
-        self.frames.append([Point(p.x, p.y, p.z) for p in hand])
-
-        count = len(self.frames)
-        averaged = [
-            Point(
-                sum(frame[i].x for frame in self.frames) / count,
-                sum(frame[i].y for frame in self.frames) / count,
-                sum(frame[i].z for frame in self.frames) / count,
-            )
-            for i in range(len(hand))
-        ]
-        return [averaged]
-
-
-class Smoothed:
-    """Reports the most common of the last few values instead of the latest.
-
-    mediapipe has to guess where fingers it cannot see are - in a fist they
-    are hidden behind the palm and behind each other - and those guesses jump
-    from one frame to the next. A single stray frame changed the recognised
-    gesture, which reset the hold timer, which meant a command could never
-    build up enough time to fire.
-
-    Taking the majority of a short window ignores strays while keeping real
-    changes: a deliberate new gesture fills the window in a few frames.
-    """
-
-    def __init__(self, window: int = 5) -> None:
-        self.values = deque(maxlen=window)
-
-    def update(self, value: str) -> str:
-        self.values.append(value)
-        return Counter(self.values).most_common(1)[0][0]
 
 
 class Hold:
@@ -152,12 +89,31 @@ class OneEuroFilter:
 
     Reduces jitter while staying responsive during fast movements.
     Feed one value per frame together with the current timestamp.
+
+    The whole trick is in one line: `cutoff = min_cutoff + beta * speed`.
+    Slow movement is filtered hard, fast movement is barely filtered at all,
+    so jitter at rest and lag in motion stop being the same dial.
+
+    **beta is in the units of the signal**, which is what makes the paper's
+    example numbers useless here. Fed normalised 0..1 coordinates, a fast hand
+    moves at 1 to 3 units per second, so a beta of 0.02 - the value this was
+    first tried with - raises a 1 Hz cutoff to 1.06 Hz and the adaptation may
+    as well not exist. That leaves a plain fixed low-pass: too fast to settle
+    at rest, too slow to keep up in motion. Both complaints at once.
+
+    Tuning, in this order and no other:
+
+    1. set beta to 0 and lower min_cutoff until the output is still when the
+       input is still
+    2. raise beta until the lag during a fast movement stops being felt
+
+    Doing it the other way round tunes beta against jitter it cannot fix.
     """
 
     def __init__(
         self,
-        min_cutoff: float = 1.0,
-        beta: float = 0.02,
+        min_cutoff: float = 0.4,
+        beta: float =4.0,
         d_cutoff: float = 1.0,
     ) -> None:
         self.min_cutoff = min_cutoff
@@ -208,19 +164,44 @@ class OneEuroFilter:
         return filtered
 
 class OneEuroLandmarks:
-    def __init__(self) -> None:
+    """One OneEuroFilter per coordinate of every landmark: 63 in all.
+
+    The tuning is passed in rather than left at the defaults because the two
+    instances in main.py are fed different units. The normalised copy drives
+    the cursor and is measured in fractions of the frame; the world copy
+    drives recognition and is measured in metres. beta scales with the signal,
+    so the same number does not mean the same thing to both.
+    """
+
+    def __init__(
+        self,
+        min_cutoff: float = 0.4,
+        beta: float = 4.0,
+        d_cutoff: float = 1.0,
+    ) -> None:
+        self.min_cutoff = min_cutoff
+        self.beta = beta
+        self.d_cutoff = d_cutoff
+        self._build()
+
+    def _build(self) -> None:
+        """Fresh filters with no memory, keeping the tuning.
+
+        Not `self.__init__()`: that worked only while the settings were
+        hardcoded, and would silently throw away whatever this instance was
+        constructed with.
+        """
         self.filters = [
-            (
-                OneEuroFilter(),
-                OneEuroFilter(),
-                OneEuroFilter(),
+            tuple(
+                OneEuroFilter(self.min_cutoff, self.beta, self.d_cutoff)
+                for _ in range(3)
             )
             for _ in range(21)
         ]
 
     def update(self, hands: list, now: float) -> list:
         if not hands:
-            self.__init__()      # reset
+            self._build()      # the hand left: forget where it was
             return []
 
         hand = hands[0]
@@ -238,3 +219,93 @@ class OneEuroLandmarks:
             )
 
         return [filtered]
+
+
+class DeadZone:
+    """Holds a point still until it moves far enough to mean it.
+
+    Hysteresis in two dimensions, applied to a position instead of a boolean -
+    the same shape as the class above, for the same reason.
+
+    It exists because a low-pass filter cannot win this fight alone. Being
+    linear, whatever it removes at rest it removes from real movement too: the
+    only choice it offers is where to sit on the trade between jitter and lag,
+    not how to escape it. This escapes it. Inside the radius the output does
+    not move at all, and outside it moves at full speed with nothing added.
+
+    The cost is an offset of up to `radius` while the point is travelling, and
+    a slow deliberate movement crawls with the anchor trailing behind it. At
+    three or four pixels neither is visible.
+
+    A second thing it buys, free: ARCHITECTURE.md asks that a click must not
+    move the pointer, which is why the anchor is a knuckle and not a
+    fingertip. The palm still shifts a little as the pinch closes, and that
+    shift now falls inside the radius instead of reaching the mouse.
+
+    Works in whatever unit it is fed, but feed it pixels. That is the unit the
+    tremor is judged in, and applying it before the zone mapping would both
+    scale the radius by 2.5 and turn the circle into an ellipse, since the
+    screen is not square.
+    """
+
+    def __init__(self, radius: float) -> None:
+        self.radius = radius
+        self.anchor: tuple[float, float] | None = None
+
+    def update(self, x: float, y: float) -> tuple[float, float]:
+        if self.anchor is None:
+            self.anchor = (x, y)
+            return self.anchor
+
+        anchor_x, anchor_y = self.anchor
+        dx, dy = x - anchor_x, y - anchor_y
+        distance = math.hypot(dx, dy)
+
+        if distance > self.radius:
+            # drag the anchor along, leaving it `radius` behind the new point
+            keep = (distance - self.radius) / distance
+            self.anchor = (anchor_x + dx * keep, anchor_y + dy * keep)
+
+        return self.anchor
+
+    def reset(self) -> None:
+        """Forget the anchor, so the pointer appears wherever the hand comes
+        back rather than crawling there from where it was left."""
+        self.anchor = None
+
+
+class Wander:
+    """How still a point is. A tuning instrument, not part of the pipeline.
+
+    Reports two numbers over a sliding window, in whatever unit it is fed:
+
+    - `step`: the largest jump between one frame and the next. This is the
+      shimmer - fast and small, and the part a low-pass filter can remove.
+    - `spread`: the largest excursion across the whole window. This is slow
+      drift, which no filter that judges by speed can tell from a real slow
+      movement, so it survives any amount of low-passing.
+
+    Hold the hand still and read them in pixels. `step` says whether
+    min_cutoff is low enough; `spread` says how big the dead zone has to be to
+    swallow what is left.
+    """
+
+    def __init__(self, window: int = 60) -> None:
+        self.points = deque(maxlen=window)
+        self.steps = deque(maxlen=window)
+
+    def update(self, x: float, y: float) -> tuple[float, float]:
+        if self.points:
+            previous_x, previous_y = self.points[-1]
+            self.steps.append(math.hypot(x - previous_x, y - previous_y))
+        self.points.append((x, y))
+
+        xs = [point[0] for point in self.points]
+        ys = [point[1] for point in self.points]
+        spread = max(max(xs) - min(xs), max(ys) - min(ys))
+        step = max(self.steps) if self.steps else 0.0
+        return step, spread
+
+    def reset(self) -> None:
+        self.points.clear()
+        self.steps.clear()
