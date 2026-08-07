@@ -39,9 +39,9 @@ class Hand:
             base_options=BaseOptions(model_asset_path=str(MODEL_PATH)),
             running_mode=RunningMode.VIDEO,
             num_hands=number_of_hands,
-            min_hand_detection_confidence=0.5,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_hand_detection_confidence=0.7,
+            min_hand_presence_confidence=0.6,
+            min_tracking_confidence=0.8,
         )
         self.landmarker = HandLandmarker.create_from_options(options)
 

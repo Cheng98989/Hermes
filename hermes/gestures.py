@@ -173,3 +173,11 @@ def pinch_point(hands) -> tuple[float, float] | None:
 
     hand = hands[0]
     return hand[MIDDLE_KNUCKLE].x, hand[MIDDLE_KNUCKLE].y
+
+STABLE_POINTS = {
+    0,   # wrist
+    5,   # index MCP
+    9,   # middle MCP
+    13,  # ring MCP
+    17   # pinky MCP
+}

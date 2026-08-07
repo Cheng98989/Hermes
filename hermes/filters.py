@@ -13,10 +13,10 @@ what makes all of this testable with made-up data and no webcam.
 If something you are about to add here needs to know about fingers, gestures
 or states, it belongs in gestures.py or state.py instead.
 """
-
+import math
 from collections import Counter, deque
 from typing import NamedTuple
-
+from hermes.gestures import STABLE_POINTS
 
 class Point(NamedTuple):
     """A landmark stripped down to what the rest of the code reads."""
@@ -146,4 +146,95 @@ class Hysteresis:
         if value <= self.on_below_limit:
             self.state = True
         return self.state
-        
+
+class OneEuroFilter:
+    """Adaptive low-pass filter described in the One Euro Filter paper.
+
+    Reduces jitter while staying responsive during fast movements.
+    Feed one value per frame together with the current timestamp.
+    """
+
+    def __init__(
+        self,
+        min_cutoff: float = 1.0,
+        beta: float = 0.02,
+        d_cutoff: float = 1.0,
+    ) -> None:
+        self.min_cutoff = min_cutoff
+        self.beta = beta
+        self.d_cutoff = d_cutoff
+
+        self.last_time: float | None = None
+        self.last_value: float | None = None
+        self.last_derivative = 0.0
+
+    @staticmethod
+    def _alpha(cutoff: float, dt: float) -> float:
+        tau = 1.0 / (2.0 * math.pi * cutoff)
+        return 1.0 / (1.0 + tau / dt)
+
+    @staticmethod
+    def _lerp(alpha: float, value: float, previous: float) -> float:
+        return alpha * value + (1.0 - alpha) * previous
+
+    def update(self, value: float, now: float) -> float:
+        if self.last_time is None or self.last_value is None:
+            self.last_time = now
+            self.last_value = value
+            return value
+
+        dt = now - self.last_time
+        if dt <= 0:
+            return self.last_value
+
+        # raw derivative
+        derivative = (value - self.last_value) / dt
+
+        # smooth derivative
+        alpha_d = self._alpha(self.d_cutoff, dt)
+        derivative = self._lerp(alpha_d, derivative, self.last_derivative)
+
+        # adaptive cutoff
+        cutoff = self.min_cutoff + self.beta * abs(derivative)
+
+        # smooth value
+        alpha = self._alpha(cutoff, dt)
+        filtered = self._lerp(alpha, value, self.last_value)
+
+        self.last_time = now
+        self.last_value = filtered
+        self.last_derivative = derivative
+
+        return filtered
+
+class OneEuroLandmarks:
+    def __init__(self) -> None:
+        self.filters = [
+            (
+                OneEuroFilter(),
+                OneEuroFilter(),
+                OneEuroFilter(),
+            )
+            for _ in range(21)
+        ]
+
+    def update(self, hands: list, now: float) -> list:
+        if not hands:
+            self.__init__()      # reset
+            return []
+
+        hand = hands[0]
+        filtered = []
+
+        for i, p in enumerate(hand):
+            fx, fy, fz = self.filters[i]
+
+            filtered.append(
+                Point(
+                    fx.update(p.x, now),
+                    fy.update(p.y, now),
+                    fz.update(p.z, now),
+                )
+            )
+
+        return [filtered]

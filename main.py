@@ -8,7 +8,7 @@ from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
 from hermes.gestures import gesture_from_hands, pinch_distance, pinch_guard_ok, pinch_point
 from hermes.state import StateMachine, ACTIVE, CURSOR, DragTracker
-from hermes.filters import Hold, Smoothed, SmoothedLandmarks
+from hermes.filters import Hold, Smoothed, SmoothedLandmarks, OneEuroLandmarks
 from hermes.killswitch import KillSwitch
 from hermes.actions import Actions
 from hermes.cursor import Cursor, screen_size
@@ -27,12 +27,13 @@ now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
 gesture_hold = Hold()
+one_euro_smoother = OneEuroLandmarks()
 landmark_smoother = SmoothedLandmarks(window=7)     # world landmarks, for recognition
 drawing_smoother = SmoothedLandmarks(window=7)      # normalised ones, for the preview
 gesture_smoother = Smoothed(window=3)
 state_machine = StateMachine()
 
-drag_tracker = DragTracker(on_below=0.20, off_above=0.30,dwell=0.1)
+drag_tracker = DragTracker(on_below=0.20, off_above=0.30,dwell=0.0)
 kill_switch = KillSwitch()
 actions = Actions()
 cursor = Cursor(*screen_size())
@@ -53,7 +54,7 @@ while True:
     landmarks = hand.get_all_landmarks(frame, now)
     # the preview is cosmetic: --raw-landmarks shows what mediapipe actually
     # reported, which is the honest view when something looks wrong
-    smoothed_2d_landmark = drawing_smoother.update(landmarks.hand_landmarks)
+    smoothed_2d_landmark = one_euro_smoother.update(landmarks.hand_landmarks, now)
     if args.raw_landmarks:
         overlay.draw_landmarks(frame, landmarks.hand_landmarks)
     else:
@@ -64,8 +65,8 @@ while True:
     # uses the normalised ones above, because those are what map to pixels.
     # Smoothing comes first, so every measurement downstream sees steady
     # numbers instead of mediapipe's frame-to-frame guesses.
-    hands = landmark_smoother.update(landmarks.hand_world_landmarks)
-    gesture = gesture_smoother.update(gesture_from_hands(hands))
+    hands = one_euro_smoother.update(landmarks.hand_world_landmarks, now)
+    gesture = gesture_from_hands(hands)
 
     distance = pinch_distance(hands)
     guard = pinch_guard_ok(hands)
