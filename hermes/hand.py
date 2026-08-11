@@ -83,19 +83,14 @@ class HandSelector:
     would send the pointer the wrong way.
     """
 
-    def __init__(
-        self,
-        selected_hand: str,
-        min_score: float = 0.9,
-        labels_mirrored: bool = True,
-    ) -> None:
+    def __init__(self, selected_hand: str, min_score: float = 0.5, labels_mirrored: bool = True) -> None:
         if selected_hand not in (LEFT, RIGHT):
             raise ValueError("selected_hand must be Left or Right")
 
-        self.selected_hand = selected_hand
+        self.selected_hand = selected_hand #real hand wanted by the user
         self.min_score = min_score
         # what mediapipe will actually call the hand we want
-        self.label = OPPOSITE[selected_hand] if labels_mirrored else selected_hand
+        self.label = OPPOSITE[selected_hand] if labels_mirrored else selected_hand #hand label that comes from mediapipe
 
     def select_index(self, result: HandLandmarkerResult) -> int | None:
         """Index of the configured hand, or None when it is not in frame.

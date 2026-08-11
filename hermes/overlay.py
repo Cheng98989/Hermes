@@ -7,6 +7,7 @@ STATE_COLORS = {
     "IDLE":   (0, 0, 255),      # red
     "ACTIVE": (0, 255, 0),      # green
     "CURSOR": (255, 0, 0),      # blue
+    "SCROLL": (0, 255, 255),
 }
 
 class Overlay:
@@ -78,3 +79,19 @@ class Overlay:
             (0, 255, 0),   # verde
             1              # spessore del bordo (rettangolo vuoto)
         )
+
+    def draw_scroll_origin(self, frame: MatLike, origin_y: float | None, dead_zone: float) -> None:
+        """The height that means "stopped", and the band around it.
+
+        The origin is fixed for as long as SCROLL lasts, which makes the
+        mapping predictable but leaves the user with no way to find neutral
+        again except by memory. Drawing it turns that into something you look
+        at instead of something you remember.
+        """
+        if origin_y is None:
+            return
+
+        y = int(origin_y * self.height)
+        band = int(dead_zone * self.height)
+        cv2.line(frame, (0, y), (self.width, y), (0, 255, 255), 1)
+        cv2.rectangle(frame, (0, y - band), (self.width - 1, y + band), (0, 255, 255), 1)       

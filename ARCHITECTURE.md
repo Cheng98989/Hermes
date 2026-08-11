@@ -266,7 +266,7 @@ Do not re-propose these without new information — each was measured.
 | **A Kalman filter for the pointer** | With one sensor and no real model of how a hand moves, a constant-velocity Kalman converges on what a well-tuned One Euro already does, with more knobs and more code. And it *predicts*, so it overshoots when the hand stops — the worst possible moment for a pointer. |
 | **Double exponential / other predictive smoothing** | Same overshoot, more pronounced. They buy back lag by introducing error exactly at the instants that matter: arriving on a target, and clicking. |
 | **A longer moving average on the pointer** | Pure lag. `SmoothedLandmarks` lost to One Euro at every setting, and once the pointer stopped using it nothing else did — so it went. |
-| **A median filter before One Euro** | Not rejected, just not needed *yet*. It cures isolated single-frame jumps and does nothing against continuous tremor. Add it only if `jit step` on the overlay shows spikes while `spread` stays small. |
+| **A median filter before One Euro** | Not rejected, just not needed *yet*. It cures isolated single-frame jumps and does nothing against continuous tremor. Add it only if the pointer sits still and occasionally lurches, rather than trembling continuously. |
 | **The One Euro defaults from the paper** | `min_cutoff=1.0, beta=0.02` fed normalised coordinates. `beta` scales with the signal, and a hand moves at 1–3 normalised units per second, so the cutoff never left 1 Hz and the adaptation — the entire point of the filter — was switched off. It behaved as a fixed low-pass that was both too slow and too fast. See the tuning procedure below. |
 
 Also worth knowing: **`mp.solutions` no longer exists.** mediapipe 1.0 removed
@@ -308,25 +308,30 @@ palm_point ──► OneEuroLandmarks ──► to_screen ──► DeadZone ─
   no lag)                              = the gain
 ```
 
-The instrument is on the preview, second debug line, both in **screen pixels**
-and both measured *before* the dead zone — after it the reading at rest is zero
-by construction and says nothing:
+The tuning below was done against a throwaway jitter meter drawn on the
+preview: a sliding window of the last two seconds reporting two numbers in
+screen pixels, measured *before* the dead zone — after it the reading at rest
+is zero by construction and says nothing.
 
-- **`step`** — the largest jump between consecutive frames over the last two
-  seconds. The shimmer. This is what `min_cutoff` controls.
-- **`spread`** — the largest excursion across the whole window. Slow drift. No
-  filter that judges by speed can tell it from a real slow movement, so it
-  survives any amount of low-passing. This is what the dead zone is for.
+- **step** — the largest jump between consecutive frames. The shimmer, and
+  what `min_cutoff` controls.
+- **spread** — the largest excursion across the whole window. Slow drift,
+  which no filter that judges by speed can tell from a real slow movement, so
+  it survives any amount of low-passing. This is what the dead zone is for.
 
-Enter CURSOR, rest your elbow, hold still, and read them. Then, **one dial at a
-time** — turning two tells you nothing about either:
+It has been removed now that the values are settled. It was about twenty lines
+— two `deque`s, the peak frame-to-frame distance and the bounding box of the
+window — and is worth writing again from scratch before re-tuning, because the
+two numbers are what make the steps below possible.
 
-1. **`beta = 0`**, then lower `min_cutoff` (0.4 → 0.3 → 0.25) until `step`
-   stops falling. Below that you are only buying lag.
+Then, **one dial at a time** — turning two tells you nothing about either:
+
+1. **`beta = 0`**, then lower `min_cutoff` (0.4 → 0.3 → 0.25) until step stops
+   falling. Below that you are only buying lag.
 2. **Raise `beta`** (4 → 8 → 15) until a fast movement stops feeling dragged.
-   `step` at rest must not move while you do this; if it does, `beta` is
+   Step at rest must not move while you do this; if it does, `beta` is
    reacting to noise and is too high.
-3. **Set `radius`** just above the `spread` you are left with. Typically 2–4.
+3. **Set `radius`** just above the spread you are left with. Typically 2–5.
    Under 2 it does nothing; over 5 fine pointing turns steppy.
 4. If tremor still bothers you, **widen the zone**. `ZONE_MIN/MAX` at
    0.25/0.75 takes the gain from 4800 to 3840 px per unit — 20% off everything
@@ -388,7 +393,7 @@ Not done, in rough order of importance:
   a test would have caught it in seconds. `HandSelector` is the newest gap and
   the easiest to fill — it is pure logic over a mediapipe result, and its
   index-0 and hand-absent branches were both wrong on the first attempt.
-  (`palm_point`, `DeadZone` and `Wander` are covered, in `test_pointer.py`.)
+  (`palm_point` and `DeadZone` are covered, in `test_pointer.py`.)
 - The cursor maps to the **primary monitor only**; the desktop spans two.
 - No configuration file — every threshold is a constant in a module.
 - No feedback that does not require looking at the preview. A short beep on

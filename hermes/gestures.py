@@ -17,8 +17,10 @@ import math
 
 WRIST = 0
 THUMB_TIP = 4
+INDEX_DIP = 7
 INDEX_TIP = 8
 MIDDLE_KNUCKLE = 9
+MIDDLE_DIP = 11
 
 # The four MCP knuckles: the points that do not move when the fingers do.
 #
@@ -190,7 +192,58 @@ def palm_point(hands) -> tuple[float, float] | None:
 
     hand = hands[0]
     points = [hand[i] for i in ANCHOR_POINTS]
+    return sum(p.x for p in points) / len(points), sum(p.y for p in points) / len(points)
+
+
+
+
+def finger_gap(hands) -> float:
+    """How far apart the index and middle are, in palm lengths.
+
+    2D, like pinch_distance and for the same reason: two fingers held
+    together are in the same place in the image, and z is estimated rather
+    than observed.
+
+    Measured at the DIP joints, not at the tips. The tips were tried
+    alongside on the overlay and dropped: the two fingers pivot at their
+    knuckles, so the tips do separate further, but they are also the noisiest
+    landmarks mediapipe produces and they swing whenever a fingertip curls -
+    which it does constantly while the hand is doing anything else.
+
+    Infinity when no hand is in frame - "as far apart as fingers can be" - so
+    anything watching this opens instead of latching closed.
+    """
+    if not hands:
+        return math.inf
+
+    hand = hands[0]
+    return distance_2d(hand[INDEX_DIP], hand[MIDDLE_DIP]) / palm_size(hand)
+
+
+
+def finger_point(hands) -> tuple[float, float] | None:
+    """Where the two scrolling fingers are, 0..1 across the frame.
+
+    Same contract as palm_point - (x, y), normalised, None when no hand is in
+    frame - so the two are interchangeable at the call site. Returning them
+    the other way round silently feeds the scroll sideways movement instead
+    of vertical, which looks exactly like a scroll that does not work.
+
+    The scroll anchors here rather than on the palm because scrolling should
+    be a wrist movement, not an arm movement. The palm barely shifts when the
+    wrist tilts, so anchoring there means lifting the whole forearm to reach
+    any speed; these joints sit far enough from the pivot that a small tilt
+    covers real ground.
+
+    The DIP joints rather than the tips: they travel nearly as far, they are
+    less noisy than the extremities of mediapipe's regression, and they do
+    not move when a fingertip curls.
+    """
+    if not hands:
+        return None
+
+    hand = hands[0]
     return (
-        sum(p.x for p in points) / len(points),
-        sum(p.y for p in points) / len(points),
+        (hand[INDEX_DIP].x + hand[MIDDLE_DIP].x) / 2,
+        (hand[INDEX_DIP].y + hand[MIDDLE_DIP].y) / 2,
     )

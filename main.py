@@ -6,12 +6,13 @@ from hermes.camera import Camera
 from hermes.hand import Hand, HandSelector, RIGHT
 from hermes.overlay import Overlay
 from hermes.fps import FpsCounter
-from hermes.gestures import gesture_from_hands, palm_point, pinch_distance, pinch_guard_ok
-from hermes.state import StateMachine, ACTIVE, CURSOR, DragTracker
-from hermes.filters import DeadZone, Hold, OneEuroLandmarks, Wander
+from hermes.gestures import gesture_from_hands, palm_point, pinch_distance, pinch_guard_ok, finger_gap, finger_point
+from hermes.state import StateMachine, ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers
+from hermes.filters import DeadZone, Hold, OneEuroLandmarks
 from hermes.killswitch import KillSwitch
 from hermes.actions import Actions
 from hermes.cursor import Cursor, screen_size, to_screen
+from hermes.scroll import ScrollRate
 
 parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
 parser.add_argument(
@@ -29,8 +30,8 @@ fps_counter = FpsCounter(now, 60)
 overlay = Overlay(cam.width, cam.height)
 gesture_hold = Hold()
 # The pointer chain, in the order the numbers travel along it. Every one of
-# these is a dial: turn one at a time and watch "jit" on the overlay, because
-# turning two at once tells you nothing about either.
+# these is a dial, and every value below was measured rather than guessed -
+# see "Tuning the pointer" in ARCHITECTURE.md for how, and for the readings.
 #
 #   palm_point  ->  one_euro_smoother  ->  to_screen  ->  dead_zone  ->  mouse
 #
@@ -40,7 +41,6 @@ gesture_hold = Hold()
 one_euro_smoother = OneEuroLandmarks(min_cutoff=0.4, beta=4.0)         # normalised, drives the cursor
 one_euro_smoother_world = OneEuroLandmarks(min_cutoff=0.25, beta=10.0)   # world, drives recognition
 dead_zone = DeadZone(radius=5.0)     # screen pixels
-wander = Wander(window=60)           # two seconds at 30 fps; tuning only
 state_machine = StateMachine()
 
 drag_tracker = DragTracker(on_below=0.20, off_above=0.30, dwell=0.0)
@@ -48,7 +48,9 @@ kill_switch = KillSwitch()
 actions = Actions()
 cursor = Cursor(*screen_size())
 last_command = ""
-step = spread = 0.0      # how still the pointer is, in pixels; see Wander
+
+joined_fingers = JoinedFingers(on_below=0.20, off_above=0.30)   # DAL PASSO 0
+scroll_rate = ScrollRate()
 
 while True:
     now = time.perf_counter()
@@ -80,10 +82,13 @@ while True:
     else:
         overlay.draw_landmarks(frame, hands2d)
 
+
     overlay.draw_fps(frame, fps)
     overlay.draw_mouse_mapping_area(frame)
 
     gesture = gesture_from_hands(hands)
+    gap = finger_gap(hands)
+    gesture = joined_fingers.update(gesture, gap)
 
     distance = pinch_distance(hands)
     guard = pinch_guard_ok(hands)
@@ -91,24 +96,25 @@ while True:
     held = gesture_hold.update(gesture, now)
     state = state_machine.update(gesture, held)
 
+
+    
     mouse_position = palm_point(hands2d)
     if state == CURSOR and mouse_position is not None:
         # the mapping happens here rather than inside Cursor.move_to, so the
         # dead zone can work in pixels: a radius in pixels is the same on both
         # axes, while the same radius in normalised units is not
         target = to_screen(*mouse_position, *cursor.screen_size)
-
-        # measured BEFORE the dead zone on purpose - after it the reading at
-        # rest is zero by construction, which says nothing about the filter
-        step, spread = wander.update(*target)
-
         cursor.move_to_pixels(*dead_zone.update(*target))
     else:
         # the pointer is not being driven: drop the anchor, or the hand coming
         # back somewhere else would crawl there from where it was left
         dead_zone.reset()
-        wander.reset()
-        step = spread = 0.0
+
+    scroll_position = finger_point(hands2d)
+    if state == SCROLL and scroll_position is not None:
+        cursor.scroll(scroll_rate.update(scroll_position[1], now))
+    else:
+        scroll_rate.reset()
 
     cursor.set_pressed(drag_status and state == CURSOR)      # every frame, always
 
@@ -116,11 +122,9 @@ while True:
     if fired:
         last_command = fired
     overlay.draw_text(frame, f"{state}  {gesture}  {held:.1f}s | {last_command} | {distance:.2f} | drag_status={drag_status} | guard: {guard}", y=100)
-    # hold the hand still and read these: step is the per-frame shimmer, spread
-    # the excursion over two seconds. Both in screen pixels, before the dead
-    # zone. See "Tuning the pointer" in ARCHITECTURE.md.
-    overlay.draw_text(frame, f"jit step {step:.1f}px  spread {spread:.1f}px  (zone {dead_zone.radius:.0f}px)", y=130)
+    overlay.draw_text(frame, f"gap {gap:.2f}", y=130)
     overlay.draw_state_border(frame, state)
+    overlay.draw_scroll_origin(frame, scroll_rate.origin, scroll_rate.dead_zone)
     # Display the frame
     cv2.imshow("Hermes", frame)
 

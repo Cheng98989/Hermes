@@ -15,7 +15,6 @@ If something you are about to add here needs to know about fingers, gestures
 or states, it belongs in gestures.py or state.py instead.
 """
 import math
-from collections import deque
 from typing import NamedTuple
 
 
@@ -110,12 +109,7 @@ class OneEuroFilter:
     Doing it the other way round tunes beta against jitter it cannot fix.
     """
 
-    def __init__(
-        self,
-        min_cutoff: float = 0.4,
-        beta: float =4.0,
-        d_cutoff: float = 1.0,
-    ) -> None:
+    def __init__(self, min_cutoff: float = 0.4, beta: float = 4.0, d_cutoff: float = 1.0) -> None:
         self.min_cutoff = min_cutoff
         self.beta = beta
         self.d_cutoff = d_cutoff
@@ -173,12 +167,7 @@ class OneEuroLandmarks:
     so the same number does not mean the same thing to both.
     """
 
-    def __init__(
-        self,
-        min_cutoff: float = 0.4,
-        beta: float = 4.0,
-        d_cutoff: float = 1.0,
-    ) -> None:
+    def __init__(self, min_cutoff: float = 0.4, beta: float = 4.0, d_cutoff: float = 1.0) -> None:
         self.min_cutoff = min_cutoff
         self.beta = beta
         self.d_cutoff = d_cutoff
@@ -191,13 +180,7 @@ class OneEuroLandmarks:
         hardcoded, and would silently throw away whatever this instance was
         constructed with.
         """
-        self.filters = [
-            tuple(
-                OneEuroFilter(self.min_cutoff, self.beta, self.d_cutoff)
-                for _ in range(3)
-            )
-            for _ in range(21)
-        ]
+        self.filters = [tuple(OneEuroFilter(self.min_cutoff, self.beta, self.d_cutoff) for _ in range(3)) for _ in range(21)]
 
     def update(self, hands: list, now: float) -> list:
         if not hands:
@@ -210,13 +193,7 @@ class OneEuroLandmarks:
         for i, p in enumerate(hand):
             fx, fy, fz = self.filters[i]
 
-            filtered.append(
-                Point(
-                    fx.update(p.x, now),
-                    fy.update(p.y, now),
-                    fz.update(p.z, now),
-                )
-            )
+            filtered.append(Point(fx.update(p.x, now), fy.update(p.y, now), fz.update(p.z, now)))
 
         return [filtered]
 
@@ -272,40 +249,3 @@ class DeadZone:
         """Forget the anchor, so the pointer appears wherever the hand comes
         back rather than crawling there from where it was left."""
         self.anchor = None
-
-
-class Wander:
-    """How still a point is. A tuning instrument, not part of the pipeline.
-
-    Reports two numbers over a sliding window, in whatever unit it is fed:
-
-    - `step`: the largest jump between one frame and the next. This is the
-      shimmer - fast and small, and the part a low-pass filter can remove.
-    - `spread`: the largest excursion across the whole window. This is slow
-      drift, which no filter that judges by speed can tell from a real slow
-      movement, so it survives any amount of low-passing.
-
-    Hold the hand still and read them in pixels. `step` says whether
-    min_cutoff is low enough; `spread` says how big the dead zone has to be to
-    swallow what is left.
-    """
-
-    def __init__(self, window: int = 60) -> None:
-        self.points = deque(maxlen=window)
-        self.steps = deque(maxlen=window)
-
-    def update(self, x: float, y: float) -> tuple[float, float]:
-        if self.points:
-            previous_x, previous_y = self.points[-1]
-            self.steps.append(math.hypot(x - previous_x, y - previous_y))
-        self.points.append((x, y))
-
-        xs = [point[0] for point in self.points]
-        ys = [point[1] for point in self.points]
-        spread = max(max(xs) - min(xs), max(ys) - min(ys))
-        step = max(self.steps) if self.steps else 0.0
-        return step, spread
-
-    def reset(self) -> None:
-        self.points.clear()
-        self.steps.clear()

@@ -85,3 +85,14 @@ class Cursor:
             self._mouse.release(Button.left)
 
         self._pressed = pressed
+        
+    def scroll(self, clicks: int) -> None:
+        """Scroll by whole clicks; positive is up.
+
+        Zero is dropped rather than sent. Most frames produce no click at all,
+        and pynput would otherwise push an event to the operating system
+        thirty times a second to say that nothing happened.
+        """
+        if clicks:
+            self._mouse.scroll(0, clicks)
+        

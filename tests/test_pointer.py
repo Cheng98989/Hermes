@@ -1,4 +1,4 @@
-"""Tests for the pointer chain: palm_point, DeadZone and Wander.
+"""Tests for the pointer chain: palm_point and DeadZone.
 
 =============================================================================
 GENERATED FILE - written by Claude (Anthropic) on 2026-08-07, on request.
@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from hermes.filters import DeadZone, Wander
+from hermes.filters import DeadZone
 from hermes.gestures import ANCHOR_POINTS, palm_point
 
 
@@ -149,54 +149,3 @@ def test_reset_makes_the_pointer_appear_rather_than_crawl():
     zone.update(0.0, 0.0)
     zone.reset()
     assert zone.update(900.0, 500.0) == (900.0, 500.0)
-
-
-# --- Wander -----------------------------------------------------------------
-
-def test_a_single_reading_has_no_movement_yet():
-    assert Wander(window=10).update(100.0, 100.0) == (0.0, 0.0)
-
-
-def test_step_is_the_largest_jump_between_consecutive_frames():
-    wander = Wander(window=10)
-    wander.update(0.0, 0.0)
-    wander.update(1.0, 0.0)      # step of 1
-    wander.update(5.0, 0.0)      # step of 4
-    step, _ = wander.update(6.0, 0.0)     # step of 1; the 4 still stands
-    assert step == pytest.approx(4.0)
-
-
-def test_spread_is_the_whole_excursion_not_the_last_step():
-    """Slow drift is the failure a per-frame measure cannot see: eight frames
-    of half a pixel each look perfectly still and add up to four pixels."""
-    wander = Wander(window=60)
-    for i in range(9):
-        step, spread = wander.update(i * 0.5, 0.0)
-    assert step == pytest.approx(0.5)
-    assert spread == pytest.approx(4.0)
-
-
-def test_spread_takes_the_worse_of_the_two_axes():
-    wander = Wander(window=60)
-    wander.update(0.0, 0.0)
-    _, spread = wander.update(2.0, 7.0)
-    assert spread == pytest.approx(7.0)
-
-
-def test_readings_older_than_the_window_stop_counting():
-    """Otherwise a jump from ten seconds ago would sit on the overlay forever
-    and there would be no way to see the effect of turning a dial."""
-    wander = Wander(window=3)
-    wander.update(0.0, 0.0)
-    wander.update(50.0, 0.0)
-    wander.update(50.0, 0.0)
-    _, spread = wander.update(50.0, 0.0)
-    assert spread == pytest.approx(0.0)
-
-
-def test_reset_clears_both_numbers():
-    wander = Wander(window=10)
-    wander.update(0.0, 0.0)
-    wander.update(99.0, 0.0)
-    wander.reset()
-    assert wander.update(5.0, 5.0) == (0.0, 0.0)

@@ -223,7 +223,7 @@ tests/
   test_gestures.py   fingers, gesture names
   test_state.py      the state machine
   test_filters.py    holds, repeats and smoothing
-  test_pointer.py    the palm anchor, the dead zone and the jitter meter
+  test_pointer.py    the palm anchor and the dead zone
 ARCHITECTURE.md      how it works, why, and what was rejected
 ROADMAP.md           milestones and what is left
 ```
