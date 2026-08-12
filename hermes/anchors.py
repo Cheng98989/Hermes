@@ -1,7 +1,7 @@
 """Where the hand is: the point each control follows."""
 
 from hermes.geometry import Point
-from hermes.landmarks import INDEX_DIP, KNUCKLES, MIDDLE_DIP, FrameHands
+from hermes.landmarks import INDEX_DIP, KNUCKLES_FOR_CURSOR, MIDDLE_DIP, FrameHands
 
 
 # drives the pointer: the knuckles are rigid, so the fingers can pinch without
@@ -11,7 +11,7 @@ def palm_point(frame: FrameHands) -> Point | None:
         return None
 
     hand = frame[0]
-    points = [hand[i] for i in KNUCKLES]
+    points = [hand[i] for i in KNUCKLES_FOR_CURSOR]
     return Point(
         sum(p.x for p in points) / len(points),
         sum(p.y for p in points) / len(points),

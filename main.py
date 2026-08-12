@@ -2,8 +2,10 @@
 
 import argparse
 import time
+import threading
 
 import cv2
+from cv2.typing import MatLike
 
 from hermes.actions import Actions
 from hermes.anchors import finger_point, palm_point
@@ -54,16 +56,27 @@ scroll_rate = ScrollRate()
 
 now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
-last_command = ""
 
-while True:
+
+# what the two threads pass between them
+class Shared:
+    def __init__(self) -> None:
+        self.running = True
+        self.last_command = ""
+        self.frame: MatLike | None = None
+
+
+shared = Shared()
+
+
+def process_frame() -> None:
     now = time.perf_counter()
     fps = fps_counter.tick(now)
 
     # read a frame
     frame = cam.read()
     if frame is None:
-        continue
+        return
 
     # mediapipe finds the hands, the selector keeps the one we obey
     landmarks = hand.get_all_landmarks(frame, now)
@@ -109,7 +122,7 @@ while True:
     # media keys
     fired = actions.update(gesture, held, now, state == ACTIVE)
     if fired:
-        last_command = fired
+        shared.last_command = fired
 
     # preview
     # --raw-landmarks draws what mediapipe reported, unsmoothed
@@ -119,23 +132,51 @@ while True:
     overlay.draw_scroll_origin(frame, scroll_rate.origin, scroll_rate.dead_zone)
     overlay.draw_text(
         frame,
-        f"{state}  {gesture}  {held:.1f}s | {last_command} | pinch {distance:.2f} | "
+        f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | pinch {distance:.2f} | "
         f"drag {drag_status} | guard {guard}",
         y=100,
     )
     overlay.draw_text(frame, f"gap {gap:.2f}", y=130)
     overlay.draw_state_border(frame, state)
+    shared.frame = frame
 
-    # show the frame
-    cv2.imshow("Hermes", frame)
 
-    # quit
-    if kill_switch.triggered:
+def work() -> None:
+    try:
+        while shared.running:
+            process_frame()
+    finally:
+        shared.running = False
+        cursor.set_pressed(False)
+
+
+thread = threading.Thread(target=work, daemon=True)
+thread.start()
+
+
+# stops the worker and waits for it; False if it did not stop in time
+def stop_work(max_time: float) -> bool:
+    shared.running = False
+    thread.join(timeout=max_time)
+    return not thread.is_alive()
+
+
+# the main thread only shows what the worker has already finished
+while True:
+    if shared.frame is not None:
+        cv2.imshow("Hermes", shared.frame)
+
+    quit_key = cv2.waitKey(50) & 0xFF == ord("q")
+    if quit_key or kill_switch.triggered or not shared.running:
         break
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
 
-cam.close()
-hand.close()
+stopped = stop_work(0.5)
+
+# closing these while the worker is still inside cam.read() or mediapipe is
+# what crashes; if it never stopped, leave them to the operating system
+if stopped:
+    cam.close()
+    hand.close()
+
 cv2.destroyAllWindows()
 kill_switch.stop()

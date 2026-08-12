@@ -35,8 +35,8 @@ PINKY_PIP = 18
 PINKY_DIP = 19
 PINKY_TIP = 20
 
-# the knuckle row: the four points that do not move when the fingers do
-KNUCKLES = (INDEX_MCP, MIDDLE_MCP, RING_MCP, PINKY_MCP)
+# the knuckles the pointer follows; the index MCP is left out
+KNUCKLES_FOR_CURSOR = (MIDDLE_MCP, RING_MCP, PINKY_MCP)
 
 # every landmark of a finger, knuckle to tip
 FINGER_LANDMARKS = {
