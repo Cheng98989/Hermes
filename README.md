@@ -139,7 +139,7 @@ pass any "is it extended?" test tried here, which made a plain fist register
 as something else. A fist is what switches Hermes off, so four fingers that
 are always right beat five with one that lies.
 
-To add a gesture, add one line to `GESTURES` in `hermes/gestures.py`. No logic
+To add a gesture, add one line to `GESTURES` in `hermes/recognition.py`. No logic
 to touch, and its test is generated automatically from the table.
 
 ### What is measured
@@ -183,56 +183,36 @@ The table is `ACTIONS` in `hermes/actions.py`.
 
 ---
 
-## Tests
-
-```
-.venv\Scripts\python -m pytest
-```
-
-Use `python -m pytest`, not bare `pytest`: without `python -m` the project
-root is not on the import path and `import hermes` fails.
-
-The tested modules are the pure ones - `gestures.py`, `state.py` and
-`filters.py` - because they are the ones with no I/O: no webcam, no mediapipe,
-and no clock, since the current instant is passed in rather than read. Run the
-suite after every change to those files.
-
-Useful flags: `-q` compact, `-v` one line per test, `-k word` to run only
-matching tests.
-
----
-
 ## Project layout
 
 ```
 main.py              the loop that wires everything together
 hermes/
+  geometry.py        points and the distances between them  [pure]
+  signals.py         noisy stream -> steady answer: Hold, Repeater,
+                     Hysteresis, OneEuroFilter, DeadZone  [pure]
+  landmarks.py       how a hand is built: indices, fingers, skeleton  [pure]
   camera.py          webcam: open, read, mirror flip, close
   hand.py            mediapipe wrapper: frame -> 21 landmarks
-  gestures.py        landmarks -> extended fingers -> gesture name  [pure]
-  filters.py         noisy stream -> steady answer: Hold, Repeater,
-                     Hysteresis, OneEuroFilter, DeadZone  [pure]
-  state.py           IDLE / ACTIVE / CURSOR, and the pinch phases  [pure]
+  hand_selector.py   result -> the one hand Hermes obeys  [pure]
+  recognition.py     world landmarks -> what the hand is doing  [pure]
+  anchors.py         normalised landmarks -> where the hand is  [pure]
+  state.py           states, transitions and the trackers behind them  [pure]
+  scroll.py          hand height -> whole scroll clicks  [pure]
   actions.py         gesture -> media key, sent with pynput
   cursor.py          a point in the frame -> the mouse pointer and its button
   killswitch.py      global Esc listener that stops the app
   overlay.py         drawing on the frame
   fps.py             sliding-window fps counter
 models/              the mediapipe hand landmark model
-tests/
-  test_gestures.py   fingers, gesture names
-  test_state.py      the state machine
-  test_filters.py    holds, repeats and smoothing
-  test_pointer.py    the palm anchor and the dead zone
 ARCHITECTURE.md      how it works, why, and what was rejected
 ROADMAP.md           milestones and what is left
 ```
 
 The modules marked pure import nothing but the standard library: data in, data
-out. That is what makes them testable without hardware. The clock counts as
-I/O for this purpose - `main.py` reads `perf_counter()` once per frame and
-hands the same instant to everyone, so a test can say "held for 1.1 seconds"
-by passing the number 1.1 instead of waiting.
+out, no hardware. The clock counts as I/O for this purpose - `main.py` reads
+`perf_counter()` once per frame and hands the same instant to everyone, so
+nothing downstream has to reach for it.
 
 ---
 
@@ -256,8 +236,8 @@ A school project, written to be understood rather than to be finished fast.
 
 Design and code were worked out with Claude (Anthropic) acting as a tutor:
 the reasoning was done in conversation, the code typed by hand, with Claude
-correcting mistakes and rewriting passages along the way. The files under
-`tests/` are the ones generated outright, and say so in their headers.
+correcting mistakes and rewriting passages along the way. The reasoning lives
+in `ARCHITECTURE.md`; the code carries one-line comments and nothing more.
 
 The findings recorded in `ROADMAP.md` - the webcam being the bottleneck, the
 thumb rotating around a pivot next to the wrist, `palm_size` collapsing under

@@ -29,6 +29,12 @@ dist/
 .vscode/
 .idea/
 
+# ─── Obsidian ─────────────────────────────────────────────────────────
+# Configurazione del vault: preferenze personali, non del progetto.
+# workspace.json in particolare cambia a ogni spostamento di pannello.
+.obsidian/
+.trash/
+
 # ─── Segreti: mai nel repo ────────────────────────────────────────────
 .env
 *.local

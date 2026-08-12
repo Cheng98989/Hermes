@@ -46,21 +46,38 @@ Modules, and what each one is responsible for:
 
 | Module | Job | Pure? |
 |---|---|---|
+| `geometry.py` | points and the distances between them | **pure** |
+| `signals.py` | noisy stream → steady answer | **pure** |
+| `landmarks.py` | how a hand is built: named indices, fingers, skeleton | **pure** |
 | `camera.py` | open the webcam, read frames, mirror them, close | I/O |
 | `hand.py` | mediapipe wrapper: frame → 21 landmarks | I/O |
-| `filters.py` | noisy stream → steady answer | **pure** |
-| `gestures.py` | landmarks → which fingers are up → gesture name | **pure** |
-| `state.py` | IDLE / ACTIVE / CURSOR, and the pinch phases | **pure** |
+| `hand_selector.py` | result → the one hand Hermes obeys | **pure** |
+| `recognition.py` | world landmarks → what the hand is doing | **pure** |
+| `anchors.py` | normalised landmarks → where the hand is | **pure** |
+| `state.py` | the states, their transitions, and the trackers behind them | **pure** |
+| `scroll.py` | hand height → whole scroll clicks | **pure** |
 | `actions.py` | gesture → media key, via pynput | I/O |
 | `cursor.py` | normalised point → mouse position and button | I/O |
 | `overlay.py` | draw on the preview frame | I/O |
 | `killswitch.py` | global Esc listener | I/O |
 | `fps.py` | frame rate over a sliding window | pure-ish |
 
-**Pure** means: imports nothing but the standard library, keeps no reference
-to hardware, and can be tested with made-up numbers. Those three modules hold
-almost all the logic, which is why the test suite runs in 30 milliseconds
-with no webcam attached.
+**Pure** means: keeps no reference to hardware and can be exercised with
+made-up numbers. Most import nothing at all; the rest import only a
+foundation - `geometry.py`, `signals.py` or `landmarks.py` - and those three
+depend on nothing.
+
+**Dependencies run one way.** `main.py` knows everyone; no module imports a
+peer. Every arrow points at one of the three foundations — `geometry.py`,
+`signals.py`, `landmarks.py` — which depend on nothing themselves.
+
+**The two coordinate systems are two types.** mediapipe returns the same hand
+twice, in metres and in fractions of the frame, and the two are structurally
+identical: nothing but a name can tell them apart, and mixing them up is
+silent. `WorldHands` and `FrameHands` in `landmarks.py` make the distinction a
+type the editor checks, at no runtime cost — `NewType` is the identity
+function. `recognition.py` takes only the first, `anchors.py` only the
+second, which is why they are two files.
 
 The clock counts as I/O for this purpose. `main.py` reads `perf_counter()`
 once per frame and hands the same instant to everyone that needs it, so a
@@ -122,7 +139,7 @@ tips*, not a classification.
 
 ### 2D for the pinch, 3D for everything else
 
-`pinch_distance` is the one measurement in `gestures.py` that ignores depth.
+`pinch_distance` is the one measurement in `recognition.py` that ignores depth.
 
 `z` is the only coordinate mediapipe estimates rather than observes — one
 camera cannot see depth — and it degrades first at awkward angles. For a
@@ -370,30 +387,32 @@ after any change to the camera, the resolution or the monitor.
   decision is surprising — the 2D pinch, the missing `(CURSOR, "fist")` row —
   the reasoning goes in a docstring, because that is where someone about to
   undo it will be looking.
-- Files under `tests/` were generated wholesale and say so in their headers.
-  The rest was written by hand, with an assistant acting as a tutor.
+- Written by hand, with an assistant acting as a tutor.
+- **The reasoning lives in this file, not in the code.** Comments there say
+  what something does in one line; why it is that way belongs here.
 
 ---
 
 ## Current state
 
 Working: activation and deactivation with a safety timeout, three media
-commands, cursor movement, click and drag by pinching.
+commands, cursor movement, click and drag by pinching, and scrolling by
+tilting two joined fingers.
 
 | State | Entered by | Left by |
 |---|---|---|
 | `IDLE` | start, or fist held 1 s, or 3 s with no hand | open palm held 1 s |
 | `ACTIVE` | open palm | fist, no hand, or pointing |
 | `CURSOR` | pointing 0.5 s | open palm 0.5 s, or 3 s with no hand |
+| `SCROLL` | index and middle held together 0.3 s, from CURSOR | opening the two fingers, pointing, open palm, or 3 s with no hand |
 
 Not done, in rough order of importance:
 
-- `cursor.py`, `actions.py`, `hand.py` and the pinch helpers have **no tests**.
-  A tautology in the first draft of the pinch guard made it always return true;
-  a test would have caught it in seconds. `HandSelector` is the newest gap and
-  the easiest to fill — it is pure logic over a mediapipe result, and its
-  index-0 and hand-absent branches were both wrong on the first attempt.
-  (`palm_point` and `DeadZone` are covered, in `test_pointer.py`.)
+- **No tests at all.** There were some, covering the pure modules, and they
+  were dropped on purpose — but two of the bugs this project has had would
+  have died in seconds under one: a tautology in the first draft of the pinch
+  guard made it always return true, and `HandSelector` got both its index-0
+  and hand-absent branches wrong on the first attempt.
 - The cursor maps to the **primary monitor only**; the desktop spans two.
 - No configuration file — every threshold is a constant in a module.
 - No feedback that does not require looking at the preview. A short beep on
