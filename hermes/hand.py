@@ -1,5 +1,6 @@
 """mediapipe wrapper: a frame in, 21 landmarks per hand out."""
 
+import sys
 from pathlib import Path
 
 import cv2
@@ -14,8 +15,13 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
     HandLandmarkerResult,
 )
 
-# built from this file, not from the working directory
-MODEL_PATH = Path(__file__).parent.parent / "models" / "hand_landmarker.task"
+# Where the bundled files live, never the working directory. PyInstaller
+# unpacks them beside the executable and points sys._MEIPASS at that folder;
+# running from source there is no such attribute, so walk up from this file.
+BUNDLE = getattr(sys, "_MEIPASS", None)
+ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
+
+MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 
 class Hand:

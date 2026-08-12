@@ -60,17 +60,19 @@ fps_counter = FpsCounter(now, 60)
 
 # what the two threads pass between them
 class Shared:
-    def __init__(self) -> None:
+    def __init__(self, now: float) -> None:
         self.running = True
         self.last_command = ""
+        self.last_frame_time = now
         self.frame: MatLike | None = None
 
 
-shared = Shared()
+shared = Shared(now)
 
 
 def process_frame() -> None:
     now = time.perf_counter()
+    shared.last_frame_time = now
     fps = fps_counter.tick(now)
 
     # read a frame
@@ -147,7 +149,6 @@ def work() -> None:
             process_frame()
     finally:
         shared.running = False
-        cursor.set_pressed(False)
 
 
 thread = threading.Thread(target=work, daemon=True)
@@ -166,12 +167,14 @@ while True:
     if shared.frame is not None:
         cv2.imshow("Hermes", shared.frame)
 
+    worker_stalled = time.perf_counter() - shared.last_frame_time > 2
+    
     quit_key = cv2.waitKey(50) & 0xFF == ord("q")
-    if quit_key or kill_switch.triggered or not shared.running:
+    if quit_key or kill_switch.triggered or not shared.running or worker_stalled:
         break
 
 stopped = stop_work(0.5)
-
+cursor.set_pressed(False)
 # closing these while the worker is still inside cam.read() or mediapipe is
 # what crashes; if it never stopped, leave them to the operating system
 if stopped:
