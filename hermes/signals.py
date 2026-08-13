@@ -114,7 +114,7 @@ def _lerp(alpha: float, value: float, previous: float) -> float:
 # it is fast, so jitter at rest and lag in motion stop being the same dial.
 # beta is in the units of the signal and does not carry between filters
 class OneEuroFilter:
-    def __init__(self, min_cutoff: float = 0.4, beta: float = 4.0, d_cutoff: float = 1.0) -> None:
+    def __init__(self, min_cutoff: float, beta: float, d_cutoff: float = 1.0) -> None:
         self.min_cutoff = min_cutoff
         self.beta = beta
         self.d_cutoff = d_cutoff
@@ -154,7 +154,7 @@ class OneEuroFilter:
 # one OneEuroFilter per coordinate of every landmark: 63 in all, each its own
 # signal. The tuning lives in the filters, so this class only routes
 class OneEuroLandmarks:
-    def __init__(self, min_cutoff: float = 0.4, beta: float = 4.0, d_cutoff: float = 1.0) -> None:
+    def __init__(self, min_cutoff: float, beta: float, d_cutoff: float = 1.0) -> None:
         self.filters = [
             tuple(OneEuroFilter(min_cutoff, beta, d_cutoff) for _ in range(3))
             for _ in range(21)

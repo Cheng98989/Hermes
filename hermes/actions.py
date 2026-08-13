@@ -17,7 +17,7 @@ class Action(NamedTuple):
 # before it fires, repeat how often it fires again while it is kept up
 ACTIONS = {
     "victory":           Action(Key.media_volume_up,   dwell=0.5, repeat=0.30),
-    "middle_ring_pinky": Action(Key.media_volume_down, dwell=0.5, repeat=0.30),
+    "three":             Action(Key.media_volume_down, dwell=0.5, repeat=0.30),
     "rock":              Action(Key.media_play_pause,  dwell=0.5, repeat=None),
 }
 

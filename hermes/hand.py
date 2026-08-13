@@ -25,7 +25,13 @@ MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 
 class Hand:
-    def __init__(self, number_of_hands: int = 1) -> None:
+    def __init__(
+        self,
+        minimum_hand_detection_confidence: float,
+        minimum_hand_presence_confidence: float,
+        minimum_tracking_confidence: float,
+        number_of_hands: int = 2,
+    ) -> None:
         if not MODEL_PATH.exists():
             raise RuntimeError(f"Model not found: {MODEL_PATH}")
 
@@ -33,9 +39,9 @@ class Hand:
             base_options=BaseOptions(model_asset_path=str(MODEL_PATH)),
             running_mode=RunningMode.VIDEO,
             num_hands=number_of_hands,
-            min_hand_detection_confidence=0.5,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_hand_detection_confidence=minimum_hand_detection_confidence,
+            min_hand_presence_confidence=minimum_hand_presence_confidence,
+            min_tracking_confidence=minimum_tracking_confidence,
         )
         self.landmarker = HandLandmarker.create_from_options(options)
 

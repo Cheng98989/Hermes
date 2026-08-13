@@ -6,12 +6,6 @@ from pynput.mouse import Button, Controller
 
 from hermes.geometry import Point
 
-# Only the middle of the frame maps to the screen; outside clamps to the edge.
-# Narrower: smaller movements cover the screen, less precision. Wider: more
-# precision, but the hand has to travel further.
-ZONE_MIN = 0.25
-ZONE_MAX = 0.75
-
 
 # the primary monitor, not the whole desktop. In a function because
 # ctypes.windll does not exist on other platforms
@@ -22,15 +16,21 @@ def screen_size() -> tuple[int, int]:
 
 
 # where `value` falls inside the active zone, 0 to 1, clamped
-def _zone_fraction(value: float) -> float:
-    return min(max((value - ZONE_MIN) / (ZONE_MAX - ZONE_MIN), 0.0), 1.0)
+def _zone_fraction(value: float, zone_min: float, zone_max: float) -> float:
+    return min(max((value - zone_min) / (zone_max - zone_min), 0.0), 1.0)
 
 # a point in the frame -> a pixel on the monitor, kept in floats: rounding
 # to whole pixels happens once, at the mouse
-def to_screen(point: Point, screen_width: int, screen_height: int) -> Point:
+def to_screen(
+    point: Point,
+    screen_width: int,
+    screen_height: int,
+    zone_min: float,
+    zone_max: float,
+) -> Point:
     return Point(
-        _zone_fraction(point.x) * screen_width,
-        _zone_fraction(point.y) * screen_height,
+        _zone_fraction(point.x, zone_min, zone_max) * screen_width,
+        _zone_fraction(point.y, zone_min, zone_max) * screen_height,
     )
 
 

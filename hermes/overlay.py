@@ -6,18 +6,20 @@ from cv2.typing import MatLike
 from hermes.geometry import XY
 from hermes.landmarks import CONNECTIONS
 
-STATE_COLORS = {
-    "IDLE":   (0, 0, 255),        # red
-    "ACTIVE": (0, 255, 0),        # green
-    "CURSOR": (255, 0, 0),        # blue
-    "SCROLL": (0, 255, 255),      # yellow
-}
-
 
 class Overlay:
-    def __init__(self, width: int, height: int) -> None:
-        self.width = width
-        self.height = height
+    def __init__(
+        self,
+        stream_width: int,
+        stream_height: int,
+        state_colors: dict[str, list[int]],
+    ) -> None:
+        self.width = stream_width
+        self.height = stream_height
+        self.state_colors: dict[str, tuple[int, ...]] = {}
+        for state, color in state_colors.items():
+            self.state_colors[state] = tuple(color)
+        self.unknown_color = self.state_colors.get("UNKNOWN", (128, 128, 128))
 
     def _to_frame(self, point: XY) -> tuple[int, int]:
         return int(point.x * self.width), int(point.y * self.height)
@@ -41,7 +43,7 @@ class Overlay:
 
     # the border shows which state Hermes is in
     def draw_state_border(self, frame: MatLike, state: str, thickness: int = 8) -> None:
-        color = STATE_COLORS.get(state, (128, 128, 128))      # grey if unknown
+        color = self.state_colors.get(state, self.unknown_color)
         cv2.rectangle(frame, (0, 0), (self.width - 1, self.height - 1), color, thickness)
 
     # the part of the camera view that reaches the screen

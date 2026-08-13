@@ -39,7 +39,7 @@ class StateMachine:
 
 
 class DragTracker:
-    def __init__(self, on_below=0.25, off_above=0.40, dwell=0.1) -> None:
+    def __init__(self, on_below: float, off_above: float, dwell: float) -> None:
         self.switch = Hysteresis(on_below, off_above)
         self.hold = Hold()
         self.dwell = dwell

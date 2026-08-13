@@ -16,12 +16,7 @@ OPPOSITE = {LEFT: RIGHT, RIGHT: LEFT}
 # camera.py mirrors the frame by default, which flips the labels: pass
 # labels_mirrored=False if that flip is turned off
 class HandSelector:
-    def __init__(
-        self,
-        selected_hand: str,
-        min_score: float = 0.5,
-        labels_mirrored: bool = True,
-    ) -> None:
+    def __init__(self, selected_hand: str, labels_mirrored: bool, min_score: float = 0.5) -> None:
         if selected_hand not in (LEFT, RIGHT):
             raise ValueError("selected_hand must be Left or Right")
 

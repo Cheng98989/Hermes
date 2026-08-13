@@ -7,7 +7,7 @@ from cv2.typing import MatLike
 class Camera:
     MAX_FAILURES = 20      # consecutive failed reads before giving up
 
-    def __init__(self, index: int = 0, width: int = 1280, height: int = 720) -> None:
+    def __init__(self, index: int, width: int = 1280, height: int = 720) -> None:
         self.capture = cv2.VideoCapture(index)
         if not self.capture.isOpened():
             raise RuntimeError(f"Cannot open webcam {index}")
@@ -25,7 +25,7 @@ class Camera:
 
     # None on a failed read, raises once they pile up. flip mirrors the frame:
     # true when the camera faces you
-    def read(self, flip: bool = True) -> MatLike | None:
+    def read(self, flip: bool) -> MatLike | None:
         ret, frame = self.capture.read()
         if not ret:
             self.failures += 1

@@ -6,13 +6,7 @@ Rate control, not position: the distance from an origin sets the scroll
 
 
 class ScrollRate:
-    def __init__(
-        self,
-        dead_zone: float = 0.03,
-        span: float = 0.18,
-        max_rate: float = 12.0,
-        max_dt: float = 0.1,
-    ) -> None:
+    def __init__(self, dead_zone: float, span: float, max_rate: float, max_dt: float = 0.1) -> None:
         self.dead_zone = dead_zone      # no scrolling within this of the origin
         self.span = span                # offset at which max_rate is reached
         self.max_rate = max_rate        # clicks per second, flat out

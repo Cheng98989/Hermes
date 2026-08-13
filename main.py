@@ -10,10 +10,10 @@ from cv2.typing import MatLike
 from hermes.actions import Actions
 from hermes.anchors import finger_point, palm_point
 from hermes.camera import Camera
-from hermes.cursor import ZONE_MAX, ZONE_MIN, Cursor, screen_size, to_screen
+from hermes.cursor import Cursor, screen_size, to_screen
 from hermes.fps import FpsCounter
 from hermes.hand import Hand
-from hermes.hand_selector import HandSelector, RIGHT
+from hermes.hand_selector import HandSelector
 from hermes.killswitch import KillSwitch
 from hermes.landmarks import FrameHands, WorldHands
 from hermes.overlay import Overlay
@@ -21,6 +21,7 @@ from hermes.recognition import finger_gap, gesture_from_hands, pinch_distance, p
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
 from hermes.state import ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers, StateMachine
+from hermes.config import load
 
 parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
 parser.add_argument(
@@ -30,29 +31,36 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+config = load()
+
 # --- hardware ---------------------------------------------------------------
 
-cam = Camera()
-hand = Hand(number_of_hands=2)
+cam = Camera(config.camera_index)
+hand = Hand(
+    config.min_hand_detection_confidence,
+    config.min_hand_presence_confidence,
+    config.min_tracking_confidence,
+)
 cursor = Cursor(*screen_size())
+mapping_fraction = (config.zone_min, config.zone_max)
 actions = Actions()
 kill_switch = KillSwitch()
-overlay = Overlay(cam.width, cam.height)
+overlay = Overlay(cam.width, cam.height, config.state_colors)
 
 # --- recognition ------------------------------------------------------------
 
-hand_selector = HandSelector(RIGHT)
-one_euro_smoother = OneEuroLandmarks(min_cutoff=0.25, beta=10.0)          # normalised
-one_euro_smoother_world = OneEuroLandmarks(min_cutoff=0.25, beta=10.0)  # world
-joined_fingers = JoinedFingers(on_below=0.20, off_above=0.30)
+hand_selector = HandSelector(config.hand, labels_mirrored=config.camera_faces_you)
+one_euro_smoother = OneEuroLandmarks(config.cursor_min_cutoff, config.cursor_beta)    # normalised
+one_euro_smoother_world = OneEuroLandmarks(config.world_min_cutoff, config.world_beta)    # world
+joined_fingers = JoinedFingers(on_below=config.fingers_joined, off_above=config.fingers_apart)
 gesture_hold = Hold()
-state_machine = StateMachine()
+state_machine = StateMachine()    # TODO: make the transition dwells configurable too
 
 # --- controls ---------------------------------------------------------------
 
-dead_zone = DeadZone(radius=5.0)
-drag_tracker = DragTracker(on_below=0.20, off_above=0.30, dwell=0.0)
-scroll_rate = ScrollRate()
+dead_zone = DeadZone(radius=config.cursor_dead_zone_radius)
+drag_tracker = DragTracker(config.pinch_close, config.pinch_open, config.pinch_dwell)
+scroll_rate = ScrollRate(config.scroll_dead_zone, config.scroll_span, config.scroll_speed)
 
 now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
@@ -76,7 +84,7 @@ def process_frame() -> None:
     fps = fps_counter.tick(now)
 
     # read a frame
-    frame = cam.read()
+    frame = cam.read(config.camera_faces_you)
     if frame is None:
         return
 
@@ -108,7 +116,7 @@ def process_frame() -> None:
     if state == CURSOR and mouse_position is not None:
         # mapped here rather than inside Cursor, so the dead zone can sit in
         # between: a radius in pixels is the same on both axes
-        target = to_screen(mouse_position, *cursor.screen_size)
+        target = to_screen(mouse_position, *cursor.screen_size, *mapping_fraction)
         cursor.move_to_pixels(dead_zone.update(target))
     else:
         dead_zone.reset()
@@ -128,17 +136,20 @@ def process_frame() -> None:
 
     # preview
     # --raw-landmarks draws what mediapipe reported, unsmoothed
-    overlay.draw_landmarks(frame, selected_2d if args.raw_landmarks else hands2d)
-    overlay.draw_fps(frame, fps)
-    overlay.draw_mouse_mapping_area(frame, ZONE_MIN, ZONE_MAX)
+    if config.show_skeleton:
+        overlay.draw_landmarks(frame, selected_2d if args.raw_landmarks else hands2d)
+    if config.show_mapping_area:
+        overlay.draw_mouse_mapping_area(frame, *mapping_fraction)
+    if config.show_debug_text:
+        overlay.draw_fps(frame, fps)
+        overlay.draw_text(
+            frame,
+            f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | pinch {distance:.2f} | "
+            f"drag {drag_status} | guard {guard}",
+            y=100,
+        )
+        overlay.draw_text(frame, f"gap {gap:.2f}", y=130)
     overlay.draw_scroll_origin(frame, scroll_rate.origin, scroll_rate.dead_zone)
-    overlay.draw_text(
-        frame,
-        f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | pinch {distance:.2f} | "
-        f"drag {drag_status} | guard {guard}",
-        y=100,
-    )
-    overlay.draw_text(frame, f"gap {gap:.2f}", y=130)
     overlay.draw_state_border(frame, state)
     shared.frame = frame
 
@@ -164,12 +175,14 @@ def stop_work(max_time: float) -> bool:
 
 # the main thread only shows what the worker has already finished
 while True:
-    if shared.frame is not None:
+    if config.show_preview and shared.frame is not None:
         cv2.imshow("Hermes", shared.frame)
+        quit_key = cv2.waitKey(50) & 0xFF == ord("q")
+    else:
+        time.sleep(0.05)
+        quit_key = False
 
     worker_stalled = time.perf_counter() - shared.last_frame_time > 2
-    
-    quit_key = cv2.waitKey(50) & 0xFF == ord("q")
     if quit_key or kill_switch.triggered or not shared.running or worker_stalled:
         break
 
