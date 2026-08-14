@@ -21,17 +21,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from hermes.config import ROOT, Config, save
+from hermes.config import BASICS, PREVIEW, ROOT, Config, label_and_tip, save
 
 ICON_PATH = ROOT / "assets" / "icon.png"
 
-BASICS = (
-    "camera_index", "camera_faces_you", "hand", "zone_min", "zone_max",
-    "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
-    "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
-    "scroll_dead_zone",
-)
-PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
+
 
 
 def make_widget(value):
@@ -142,12 +136,16 @@ class Settings(QDialog):
             else:
                 page_name = "Advanced"
 
-            forms[page_name].addRow(field.name.replace("_", " "), widget)
+            label, tip = label_and_tip(field.name)
+            text = QLabel(label)
+            text.setToolTip(tip)
+            widget.setToolTip(tip)
+            forms[page_name].addRow(text, widget)
             self.widgets[field.name] = widget
 
         for state, bgr in config.state_colors.items():
             button = ColorButton(bgr)
-            forms["Preview"].addRow(state.lower(), button)
+            forms["Preview"].addRow(QLabel(state.capitalize()), button)
             self.color_buttons[state] = button
 
         tabs = QTabWidget()

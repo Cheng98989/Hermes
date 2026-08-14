@@ -12,6 +12,45 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 BUNDLE = getattr(sys, "_MEIPASS", None)
 ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
 
+BASICS = (
+    "camera_index", "camera_faces_you", "hand", "zone_min", "zone_max",
+    "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
+    "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
+    "scroll_dead_zone",
+)
+PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
+
+LABELS = {
+    "camera_index": ("Camera", "Which webcam, counting from zero"),
+    "camera_faces_you": ("Camera faces you", "Mirror the picture; off if it looks away"),
+    "hand": ("Hand", "Which hand Hermes obeys; the other is ignored"),
+    "zone_min": ("Active zone start", "The part of the picture that covers the screen"),
+    "zone_max": ("Active zone end", "Wider means finer control but more hand travel"),
+    "cursor_dead_zone_radius": ("Pointer steadiness", "Pixels before the pointer follows"),
+    "pinch_close": ("Pinch to click", "How close thumb and index must be to press"),
+    "pinch_open": ("Pinch to release", "How far apart to let go; must exceed the above"),
+    "pinch_dwell": ("Pinch delay", "Seconds to hold before the click registers"),
+    "fingers_joined": ("Fingers together", "How close index and middle must be to scroll"),
+    "fingers_apart": ("Fingers apart", "How far apart they must be to stop scrolling"),
+    "scroll_speed": ("Scroll speed", "Clicks per second at full tilt"),
+    "scroll_span": ("Scroll range", "How far to tilt to reach full speed"),
+    "scroll_dead_zone": ("Scroll deadzone", "Drift allowed before scrolling starts"),
+    "show_preview": ("Open preview at start", ""),
+    "show_skeleton": ("Draw the hand skeleton", ""),
+    "show_debug_text": ("Draw the debug lines", ""),
+    "show_mapping_area": ("Draw the active zone", ""),
+    "min_hand_detection_confidence": ("Detection confidence", "How sure before reporting a hand"),
+    "min_hand_presence_confidence": ("Presence confidence", "How sure the hand is still there"),
+    "min_tracking_confidence": ("Tracking confidence", "How sure to keep following the same hand"),
+    "cursor_min_cutoff": ("Pointer smoothing", "Lower is steadier at rest, at the cost of lag"),
+    "cursor_beta": ("Pointer responsiveness", "Higher follows fast movement more closely"),
+    "world_min_cutoff": ("Recognition smoothing", "The same, for the gesture recogniser"),
+    "world_beta": ("Recognition responsiveness", "Beta scales with the signal; this one is metres"),
+}
+
+def label_and_tip(name: str) -> tuple[str, str]:
+    return LABELS.get(name, (name.replace("_", " ").capitalize(), ""))
+
 @dataclass
 class Config:
     # --- basics --------------------------------------------------------------
