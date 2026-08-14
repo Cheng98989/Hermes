@@ -1,11 +1,4 @@
-# Direct dependencies only. Everything else (numpy, matplotlib, sounddevice,
-# opencv-contrib...) is pulled in automatically by mediapipe.
-#
-#   pip install -r requirements.txt
-
 mediapipe==1.0.0
 opencv-python==5.0.0.93
 pynput==1.8.2
-
-# Development only - not needed to run the app
-pytest==9.1.1
+PySide6==6.11.1

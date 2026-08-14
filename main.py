@@ -4,7 +4,6 @@ import argparse
 import time
 import threading
 
-import cv2
 from cv2.typing import MatLike
 
 from hermes.actions import Actions
@@ -22,6 +21,10 @@ from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
 from hermes.state import ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers, StateMachine
 from hermes.config import load
+from hermes.ui import Preview, Tray, Settings, ICON_PATH
+
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
 parser.add_argument(
@@ -33,6 +36,8 @@ args = parser.parse_args()
 
 config = load()
 
+
+
 # --- hardware ---------------------------------------------------------------
 
 cam = Camera(config.camera_index)
@@ -41,6 +46,13 @@ hand = Hand(
     config.min_hand_presence_confidence,
     config.min_tracking_confidence,
 )
+
+# --- UI ---------------------------------------------------------------------
+
+app = QApplication([])
+app.setQuitOnLastWindowClosed(False)
+
+
 cursor = Cursor(*screen_size())
 mapping_fraction = (config.zone_min, config.zone_max)
 actions = Actions()
@@ -173,18 +185,26 @@ def stop_work(max_time: float) -> bool:
     return not thread.is_alive()
 
 
-# the main thread only shows what the worker has already finished
-while True:
-    if config.show_preview and shared.frame is not None:
-        cv2.imshow("Hermes", shared.frame)
-        quit_key = cv2.waitKey(50) & 0xFF == ord("q")
-    else:
-        time.sleep(0.05)
-        quit_key = False
-
+def check_quit() -> None:
     worker_stalled = time.perf_counter() - shared.last_frame_time > 2
-    if quit_key or kill_switch.triggered or not shared.running or worker_stalled:
-        break
+    if kill_switch.triggered or not shared.running or worker_stalled:
+        app.quit()
+
+
+quit_checker = QTimer(app)
+quit_checker.timeout.connect(check_quit)
+quit_checker.start(100)
+
+preview = Preview(shared, cam.width, cam.height)
+
+settings = Settings(config)
+tray = Tray(ICON_PATH, preview, settings, app.quit)
+tray.show()
+
+if config.show_preview:
+    preview.show()
+
+app.exec()
 
 stopped = stop_work(0.5)
 cursor.set_pressed(False)
@@ -194,5 +214,4 @@ if stopped:
     cam.close()
     hand.close()
 
-cv2.destroyAllWindows()
 kill_switch.stop()

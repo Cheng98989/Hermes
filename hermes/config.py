@@ -1,5 +1,6 @@
 """Handle configuration saving and loading"""
 
+import sys
 import json
 import os
 from dataclasses import asdict, dataclass, field, fields
@@ -8,6 +9,8 @@ from pathlib import Path
 CONFIG_DIR = Path(os.environ["APPDATA"]) / "Hermes"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
+BUNDLE = getattr(sys, "_MEIPASS", None)
+ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
 
 @dataclass
 class Config:

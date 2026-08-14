@@ -11,7 +11,6 @@ from hermes.geometry import Point
 # ctypes.windll does not exist on other platforms
 def screen_size() -> tuple[int, int]:
     user32 = ctypes.windll.user32
-    user32.SetProcessDPIAware()
     return (user32.GetSystemMetrics(0), user32.GetSystemMetrics(1))
 
 
