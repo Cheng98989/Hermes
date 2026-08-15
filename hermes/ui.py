@@ -1,6 +1,8 @@
 """Hermes's UI"""
 
+import cv2
 from dataclasses import fields
+import numpy as np
 
 from PySide6.QtCore import QSize, QTimer
 from PySide6.QtGui import QAction, QColor, QIcon, QImage, QPixmap
@@ -19,32 +21,47 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QMessageBox,
 )
 
-from hermes.config import BASICS, PREVIEW, ROOT, Config, label_and_tip, save
+from hermes.config import (
+    BASICS,
+    CAMERA_INDEX,
+    NO_SIGNAL_FRAME_PATH,
+    PREVIEW,
+    Config,
+    check_config,
+    label_and_tip,
+    limits,
+    save,
+)
 
-ICON_PATH = ROOT / "assets" / "icon.png"
+_no_signal = cv2.imread(str(NO_SIGNAL_FRAME_PATH))
+NO_SIGNAL_FRAME = _no_signal if _no_signal is not None else np.zeros((720, 1280, 3), dtype=np.uint8)
 
 
+def make_widget(name: str, value):
+    min_value, max_value, step, decimals = limits(name)
 
-
-def make_widget(value):
     if isinstance(value, bool):
         widget = QCheckBox()
         widget.setChecked(value)
         return widget
 
     if isinstance(value, int):
-        widget = QSpinBox()
-        widget.setRange(0, 100)
-        widget.setValue(value)
+        if name == CAMERA_INDEX:
+            widget = QComboBox()
+        else:
+            widget = QSpinBox()
+            widget.setRange(int(min_value), int(max_value))
+            widget.setValue(value)
         return widget
 
     if isinstance(value, float):
         widget = QDoubleSpinBox()
-        widget.setRange(0.0, 100.0)
-        widget.setDecimals(3)
-        widget.setSingleStep(0.01)
+        widget.setRange(min_value, max_value)
+        widget.setDecimals(decimals)
+        widget.setSingleStep(step)
         widget.setValue(value)
         return widget
 
@@ -57,10 +74,12 @@ def make_widget(value):
     return None
 
 
-def read_widget(widget):
+def read_widget(name: str, widget):
     if isinstance(widget, QCheckBox):
         return widget.isChecked()
     if isinstance(widget, QComboBox):
+        if name == CAMERA_INDEX:
+            return int(widget.currentText())
         return widget.currentText()
 
     return widget.value()
@@ -106,6 +125,10 @@ class Preview(QLabel):
 
     def refresh(self) -> None:
         frame = self.shared.frame
+
+        if self.shared.camera_lost:
+            frame = NO_SIGNAL_FRAME
+
         if frame is None:
             return
 
@@ -115,9 +138,10 @@ class Preview(QLabel):
 
 
 class Settings(QDialog):
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, get_camera) -> None:
         super().__init__()
         self.config = config
+        self.get_camera = get_camera
         self.setWindowTitle("Hermes settings")
         self.widgets = {}
         self.color_buttons = {}
@@ -125,7 +149,7 @@ class Settings(QDialog):
         forms = {"Basics": QFormLayout(), "Preview": QFormLayout(), "Advanced": QFormLayout()}
 
         for field in fields(Config):
-            widget = make_widget(getattr(config, field.name))
+            widget = make_widget(field.name, getattr(config, field.name))
             if widget is None:
                 continue
 
@@ -163,12 +187,35 @@ class Settings(QDialog):
         outer.addWidget(save_button)
         self.setLayout(outer)
 
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self.refresh_cameras)
+
+    def refresh_cameras(self) -> None:
+        combo = self.widgets.get(CAMERA_INDEX)
+        if combo is None:
+            return
+
+        wanted = combo.currentText() or str(self.config.camera_index)
+        available = self.get_camera()
+
+        combo.clear()
+        combo.addItems([str(index) for index in available] or [wanted])
+        combo.setEnabled(bool(available))
+        combo.setCurrentText(wanted)
+
     def save_settings(self) -> None:
         for name, widget in self.widgets.items():
-            setattr(self.config, name, read_widget(widget))
+            setattr(self.config, name, read_widget(name, widget))
 
         for state, button in self.color_buttons.items():
             self.config.state_colors[state] = button.bgr()
+
+        errors = check_config(self.config)
+        if errors:
+            errors = "\n".join(errors)
+            QMessageBox.warning(self, "Failed to save some options", errors)
+            return
 
         save(self.config)
         self.close()
@@ -176,7 +223,13 @@ class Settings(QDialog):
 
 class Tray(QSystemTrayIcon):
     def __init__(self, icon_path, preview: Preview, settings: Settings, on_quit) -> None:
-        super().__init__(QIcon(str(icon_path)))
+        icon = QIcon(str(icon_path))
+        if not icon:
+            pixmap = QPixmap(64, 64)
+            pixmap.fill(QColor(200, 0, 0))
+            icon = QIcon(pixmap)
+
+        super().__init__(icon)
         self.preview = preview
         self.settings = settings
         self.setToolTip("Hermes")

@@ -8,7 +8,7 @@ from cv2.typing import MatLike
 
 from hermes.actions import Actions
 from hermes.anchors import finger_point, palm_point
-from hermes.camera import Camera
+from hermes.camera import Camera, get_available_camera
 from hermes.cursor import Cursor, screen_size, to_screen
 from hermes.fps import FpsCounter
 from hermes.hand import Hand
@@ -19,12 +19,12 @@ from hermes.overlay import Overlay
 from hermes.recognition import finger_gap, gesture_from_hands, pinch_distance, pinch_guard_ok
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
-from hermes.state import ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers, StateMachine
-from hermes.config import load
-from hermes.ui import Preview, Tray, Settings, ICON_PATH
+from hermes.state import IDLE, ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers, StateMachine
+from hermes.config import ICON_PATH, load
+from hermes.ui import Preview, Tray, Settings
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
 parser.add_argument(
@@ -36,11 +36,29 @@ args = parser.parse_args()
 
 config = load()
 
+# --- Qt ---------------------------------------------------------------------
 
+
+app = QApplication([])
 
 # --- hardware ---------------------------------------------------------------
 
 cam = Camera(config.camera_index)
+if cam.lost:
+    QMessageBox.warning(
+        None,
+        "No camera",
+        "No webcam answered. Hermes will run without a picture; "
+        "connect one and restart.",
+    )
+elif cam.camera_index != config.camera_index:
+    QMessageBox.warning(
+        None,
+        "Camera unavailable",
+        f"Camera {config.camera_index} did not answer. "
+        f"Camera {cam.camera_index} is being used instead.",
+    )
+
 hand = Hand(
     config.min_hand_detection_confidence,
     config.min_hand_presence_confidence,
@@ -49,7 +67,6 @@ hand = Hand(
 
 # --- UI ---------------------------------------------------------------------
 
-app = QApplication([])
 app.setQuitOnLastWindowClosed(False)
 
 
@@ -84,6 +101,7 @@ class Shared:
         self.running = True
         self.last_command = ""
         self.last_frame_time = now
+        self.camera_lost = False
         self.frame: MatLike | None = None
 
 
@@ -93,12 +111,20 @@ shared = Shared(now)
 def process_frame() -> None:
     now = time.perf_counter()
     shared.last_frame_time = now
+
     fps = fps_counter.tick(now)
 
     # read a frame
     frame = cam.read(config.camera_faces_you)
+    if cam.lost:
+        shared.camera_lost = True
+        cursor.set_pressed(False)
+        state_machine.set_state(IDLE)
+        return
     if frame is None:
         return
+
+    shared.camera_lost = False
 
     # mediapipe finds the hands, the selector keeps the one we obey
     landmarks = hand.get_all_landmarks(frame, now)
@@ -190,14 +216,12 @@ def check_quit() -> None:
     if kill_switch.triggered or not shared.running or worker_stalled:
         app.quit()
 
-
 quit_checker = QTimer(app)
 quit_checker.timeout.connect(check_quit)
 quit_checker.start(100)
 
 preview = Preview(shared, cam.width, cam.height)
-
-settings = Settings(config)
+settings = Settings(config, get_available_camera)
 tray = Tray(ICON_PATH, preview, settings, app.quit)
 tray.show()
 

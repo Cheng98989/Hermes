@@ -11,6 +11,11 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 
 BUNDLE = getattr(sys, "_MEIPASS", None)
 ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
+ICON_PATH = ROOT / "assets" / "icon.png"
+MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
+
+
+NO_SIGNAL_FRAME_PATH = ROOT / "assets" / "no_signal_frame.png"
 
 BASICS = (
     "camera_index", "camera_faces_you", "hand", "zone_min", "zone_max",
@@ -19,6 +24,8 @@ BASICS = (
     "scroll_dead_zone",
 )
 PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
+
+CAMERA_INDEX = "camera_index"
 
 LABELS = {
     "camera_index": ("Camera", "Which webcam, counting from zero"),
@@ -48,6 +55,51 @@ LABELS = {
     "world_beta": ("Recognition responsiveness", "Beta scales with the signal; this one is metres"),
 }
 
+# Name: (min, max, step, decimals)
+RANGES = {
+    "camera_index": (0, 10, 1, 0),
+    "zone_min": (0.0, 1.0, 0.05, 2),
+    "zone_max": (0.0, 1.0, 0.05, 2),
+    "cursor_dead_zone_radius": (0.0, 50.0, 0.5, 1),
+    "pinch_close": (0.0, 3.0, 0.01, 2),
+    "pinch_open": (0.0, 3.0, 0.01, 2),
+    "pinch_dwell": (0.0, 5.0, 0.05, 2),
+    "fingers_joined": (0.0, 3.0, 0.01, 2),
+    "fingers_apart": (0.0, 3.0, 0.01, 2),
+    "scroll_speed": (1.0, 60.0, 1.0, 1),
+    "scroll_span": (0.01, 1.0, 0.01, 2),
+    "scroll_dead_zone": (0.0, 1.0, 0.01, 2),
+    "min_hand_detection_confidence": (0.0, 1.0, 0.05, 2),
+    "min_hand_presence_confidence": (0.0, 1.0, 0.05, 2),
+    "min_tracking_confidence": (0.0, 1.0, 0.05, 2),
+    "cursor_min_cutoff": (0.01, 10.0, 0.05, 2),
+    "cursor_beta": (0.0, 50.0, 0.5, 2),
+    "world_min_cutoff": (0.01, 10.0, 0.05, 2),
+    "world_beta": (0.0, 50.0, 0.5, 2),
+}
+# A < B
+ORDERED_PAIRS = (
+    ("zone_min", "zone_max"),
+    ("pinch_close", "pinch_open"),
+    ("fingers_joined", "fingers_apart"),
+    ("scroll_dead_zone", "scroll_span"),
+)
+
+
+def limits(name: str) -> tuple[float, float, float, int]:
+    return RANGES.get(name, (0.0, 100.0, 0.01, 3))
+
+
+def broken_pairs(config: "Config") -> list[str]:
+    wrong = []
+    for low, high in ORDERED_PAIRS:
+        if getattr(config, low) >= getattr(config, high):
+            first, _ = label_and_tip(low)
+            second, _ = label_and_tip(high)
+            wrong.append(f"[{first}] must be less than [{second}]")
+    return wrong
+
+
 def label_and_tip(name: str) -> tuple[str, str]:
     return LABELS.get(name, (name.replace("_", " ").capitalize(), ""))
 
@@ -59,9 +111,9 @@ class Config:
     hand: str = "Right"
     zone_min: float = 0.25
     zone_max: float = 0.75
-    cursor_dead_zone_radius: float = 5.0
-    pinch_close: float = 0.20
-    pinch_open: float = 0.30
+    cursor_dead_zone_radius: float = 20.0
+    pinch_close: float = 0.25
+    pinch_open: float = 0.35
     pinch_dwell: float = 0.0
     fingers_joined: float = 0.20
     fingers_apart: float = 0.30
@@ -98,6 +150,10 @@ def save(config: Config) -> None:
     text = json.dumps(asdict(config), indent=2)
     CONFIG_PATH.write_text(text, encoding="utf-8")
 
+def check_config(config: Config) -> list[str]:
+    # At the moment it is the same as broken pairs but there could be add some other chekers
+    errors = broken_pairs(config)
+    return errors
 
 def load() -> Config:
     try:

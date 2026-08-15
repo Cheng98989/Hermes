@@ -7,6 +7,8 @@ ACTIVE = "ACTIVE"
 CURSOR = "CURSOR"
 SCROLL = "SCROLL"
 
+STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
+
 # (current state, gesture) -> (new state, seconds it must be held).
 TRANSITIONS = {
     (IDLE,   "open_palm"): (ACTIVE, 1.0),
@@ -36,6 +38,11 @@ class StateMachine:
                 self.state = new_state
 
         return self.state
+
+    def set_state(self, state: str) -> None:
+        if state not in STATES:
+            raise ValueError(f"unknown state: {state}")
+        self.state = state
 
 
 class DragTracker:

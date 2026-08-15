@@ -12,13 +12,12 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
     HandLandmarkerResult,
 )
 
-from hermes.config import ROOT
+from hermes.config import MODEL_PATH
 # Where the bundled files live, never the working directory. PyInstaller
 # unpacks them beside the executable and points sys._MEIPASS at that folder;
 # running from source there is no such attribute, so walk up from this file.
 
 
-MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 
 class Hand:
