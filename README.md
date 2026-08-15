@@ -1,244 +1,163 @@
 # Hermes
 
-Control the desktop with hand gestures seen through a webcam.
+*Control your desktop in a different way.*
 
-**Status: work in progress.** Hermes sends media keys - volume up, volume
-down, play/pause - and moves the mouse pointer, with click and drag by
-pinching thumb and index together.
+[🇬🇧 English](README.md) · [🇮🇹 Italiano](README.it.md)
 
-`ROADMAP.md` has what is left to do. `ARCHITECTURE.md` explains how it works,
-why it is built this way, and which approaches were tried and measured before
-being rejected.
+## Table of contents
+- [What is Hermes](#what-is-hermes)
+- [Privacy notice](#privacy-notice)
+- [Quick start](#quick-start)
+- [How to use it](#how-to-use-it)
+- [States and gestures](#states-and-gestures)
+- [Settings](#settings)
+- [Uninstalling](#uninstalling)
+- [Building from source](#building-from-source)
+- [License](#license)
+- [Development notes](#development-notes)
+- [Contact](#contact)
 
----
+## What is Hermes
 
-## Requirements
+Ever eaten in front of your PC with greasy hands and still wanted to switch tabs, change the volume, or pause a video, without cleaning your hands first to touch the mouse and keyboard? Or maybe your desk is small, and while you study or work, the mouse and keyboard end up pushed somewhere awkward to reach?
 
-- Python 3.11
-- a webcam
-- Windows 11 (what it is developed and tested on)
+Hermes was built for exactly that: it uses your webcam to recognize hand gestures and lets you control the cursor and a few desktop functions with gestures, without touching anything.
 
-Linux should work for the vision part. Sending keystrokes will work under X11
-but **not** under Wayland, which blocks synthetic input by design.
+## Privacy notice
 
----
+**Hermes does not collect or send webcam images over the Internet.** All processing happens locally, on your own computer.
 
-## Install
+## Quick start
 
-From the project root:
+Hermes has currently only been tested on **Windows 11**. All you need is a working webcam.
 
-```
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-```
+There's no installer:
+1. Download the `.zip`.
+2. Extract it into a folder of your choice.
+3. Run `Hermes.exe`.
 
-The hand landmark model is already in `models/`, nothing else to download.
+On first launch, Hermes automatically creates a configuration file with default values.
 
----
+## How to use it
 
-## Run
+On startup a terminal window opens — **it must stay open**: closing it closes the app too — and after a moment, the preview window with the camera stream appears. If Hermes can't find any webcam, the preview shows an error message. Closing the preview window doesn't close Hermes: the app keeps running in the background.
 
-```
-.venv\Scripts\python main.py
-```
+Click Hermes' icon in the system tray to open the dropdown menu, which has three options:
+- **Preview** — show or hide the preview window.
+- **Settings** — open the settings panel.
+- **Quit** — actually close the application.
 
-Always launch from the project root, so `import hermes` resolves.
+> **Warning:** in case of misrecognized gestures that could cause issues, the **Esc** key on your keyboard is always listened for and will close the app even while it's running in the background.
 
-A window opens with the webcam feed. Press **`q`** with that window focused to
-quit, or **`Esc`** from anywhere: `Esc` is watched by a global listener, so it
-still stops Hermes when the preview is behind another window.
+## States and gestures
 
-### Options
+Hermes works as a state machine: at any moment you're in one specific state, and only certain gestures — held for a set number of seconds — move you to the next one.
 
-```
---raw-landmarks    draw the skeleton as mediapipe reports it, without smoothing
-```
+| State | What it does | How to enter it |
+|---|---|---|
+| **Idle** | Resting state: Hermes watches but doesn't interact with the desktop. | Starting state. |
+| **Active** | Recognizes gestures for volume up/down and play/pause (see table below). | From Idle, open palm held for 1 s. |
+| **Cursor** | The mouse pointer follows your hand; pinching (thumb + index) clicks and drags. | From Active, index finger only extended, for 0.5 s. |
+| **Scroll** | Scroll by moving your hand above or below a reference line. | From Cursor, index and middle fingers extended and together, for 0.3 s. |
+| **Unknown** | A state that, bugs aside, should never appear. | — |
 
-That flag changes the preview only, never recognition: it shows the raw
-positions, which is the honest view when something looks wrong on screen.
+To go back:
+- From **Cursor** to **Active**: open palm, 0.5 s.
+- From **Scroll** to **Cursor**: spread your fingers (index and middle apart) or extend only your index finger, 0.2 s.
+- From **Scroll** to **Active**: open palm, 0.5 s.
+- From **Active** to **Idle**: closed fist (1 s).
+- From **Cursor**, **Active**, or **Scroll** to **Idle**: hand no longer detected, for 3 s.
 
-### What is on screen
+In the **Active** state, some gestures trigger an action directly (not a state change):
 
-```
-FPS: 30.5                       frames per second (green, top)
-ACTIVE  victory  1.2s | point   state, gesture, how long it has been held,
-                                and the last command that fired
-```
+| Gesture | Action | Notes |
+|---|---|---|
+| Index and middle extended and apart (*victory*) | Volume up | Held 0.5 s, then repeats every 0.3 s while held |
+| Index, middle, and ring extended (*three*) | Volume down | Held 0.5 s, then repeats every 0.3 s |
+| Index and pinky extended (*rock*) | Media play/pause | Held 0.5 s, a single action with no repeat |
 
-The 21 hand landmarks are drawn as green dots joined by white lines, and the
-frame gets a border coloured by state: red for `IDLE`, green for `ACTIVE`.
+In the **Cursor** state, the pointer follows the average position of the middle, ring, and pinky knuckles. Pinching (bringing thumb and index together) starts a drag; spreading the fingers apart again ends it (release). Author's tip: for more accurate pinch recognition, show your hand to the camera at a slightly oblique angle rather than head-on.
 
----
+In the **Scroll** state, the preview shows a yellow line at the height of your index and middle fingertips: move your hand below that line to scroll down, above it to scroll up.
 
-## The three modes
+At the moment, hold times and the gestures tied to states and actions aren't configurable from the interface: changing them requires editing the source code.
 
-Hermes starts in `IDLE` and ignores everything except the gesture that wakes
-it. Media commands fire only in `ACTIVE`; the pointer moves only in `CURSOR`.
+## Settings
 
-| From | Gesture | Held for | To |
-|---|---|---|---|
-| `IDLE` | open palm | 1 s | `ACTIVE` |
-| `ACTIVE` | fist | 1 s | `IDLE` |
-| `ACTIVE` | point | 0.5 s | `CURSOR` |
-| `CURSOR` | open palm | 0.5 s | `ACTIVE` |
-| `ACTIVE` or `CURSOR` | no hand in frame | 3 s | `IDLE` |
+Every parameter has a tooltip (hover over it to read). If a tooltip is missing or unclear, feel free to report it.
 
-The last row is the safety timeout: forgetting to switch Hermes off is the
-dangerous mistake and you do not notice it, while switching off too early is
-merely annoying - so it fails towards off. It works because "no hand at all"
-is treated as a gesture of its own (`none`), distinct from `unknown`.
-
-There is deliberately **no** way to leave `CURSOR` with a fist: while
-pinching, the fingers read as one, so that rule would end cursor mode in the
-middle of a drag.
-
-Those rules are the whole of `TRANSITIONS` in `hermes/state.py`.
-
----
-
-## Moving the pointer
-
-In `CURSOR` the pointer follows the base knuckle of the middle finger - not a
-fingertip, because fingertips move when you pinch and a click must not drag
-the pointer with it.
-
-Only the **middle 40% of the camera view** maps to the whole screen. The
-corners are neither comfortable to reach nor well tracked, and pushing the
-hand that far takes the fingers out of frame, which loses the pinch. A green
-rectangle in the preview shows the active area; outside it the pointer sticks
-to the screen edge.
-
-**Pinch thumb and index together to hold the left button.** Pinch and release
-for a click; pinch, move and release to drag. The other three fingers must be
-closed for a pinch to register - that is the shape a hand already has while
-pointing, and it rejects the half-open poses a hand passes through on its way
-somewhere else.
-
-The pointer covers the primary monitor only.
-
----
-
-## Gestures
-
-| Gesture | Extended fingers |
+| Parameter | Description |
 |---|---|
-| `fist` | none |
-| `point` | index |
-| `victory` | index, middle |
-| `three` | index, middle, ring |
-| `rock` | index, pinky |
-| `rock_with_ring` | index, ring, pinky |
-| `middle_ring_pinky` | middle, ring, pinky |
-| `open_palm` | index, middle, ring, pinky |
+| Camera | Which webcam to use, counting from zero. |
+| Camera faces you | Mirrors the image; turn off if the webcam doesn't face you. |
+| Hand | Which hand Hermes follows; the other is ignored. |
+| Active zone start / end | The portion of the frame that maps to the screen; a wider zone gives finer control but needs more hand travel. |
+| Pointer steadiness | Minimum pixel movement before the pointer starts following your hand. |
+| Pinch to click | How close thumb and index must get to register a click. |
+| Pinch to release | How far apart they must get to release the click; must be larger than the threshold above. |
+| Pinch delay | Seconds to hold before the click registers. |
+| Fingers together | How close index and middle must be to trigger scrolling. |
+| Fingers apart | How far apart they must be to stop scrolling. |
+| Scroll speed | Scroll clicks per second at full tilt. |
+| Scroll range | How far to tilt your hand to reach full speed. |
+| Scroll deadzone | Tolerance margin before scrolling actually starts. |
+| Open preview at start | Show the preview window on launch. |
+| Draw the hand skeleton | Draws the hand skeleton in the preview. |
+| Draw the debug lines | Shows debug information in the preview. |
+| Draw the active zone | Draws the active zone in the preview. |
+| Detection confidence | How confident Hermes must be before reporting a detected hand. |
+| Presence confidence | How confident it must be that the hand is still present. |
+| Tracking confidence | How confident it must be to keep following the same hand. |
+| Pointer smoothing | Lower values keep the pointer steadier at rest, at the cost of more lag. |
+| Pointer responsiveness | Higher values follow fast movements more closely. |
+| Recognition smoothing | Same idea, for gesture recognition. |
+| Recognition responsiveness | Beta scales with the signal; here the unit is metres. |
 
-Anything else reads `unknown`, and no hand in frame reads `none`.
+To restore the default values, at the moment you need to manually delete the configuration file:
+1. Press `Win + R`, type (or paste) the following path, and press Enter:
+   ```
+   %appdata%
+   ```
+2. Go into the `Hermes` folder and delete `config.json`.
+3. Restart Hermes: the file will be recreated with default values.
 
-The thumb takes no part in recognition. It folds sideways instead of curling,
-and in a natural fist it rests outside the other fingers - far enough out to
-pass any "is it extended?" test tried here, which made a plain fist register
-as something else. A fist is what switches Hermes off, so four fingers that
-are always right beat five with one that lies.
+## Uninstalling
 
-To add a gesture, add one line to `GESTURES` in `hermes/recognition.py`. No logic
-to touch, and its test is generated automatically from the table.
+1. Delete the folder where you extracted Hermes.
+2. If you also want to remove the configuration data, delete the `Hermes` folder inside `%appdata%` too.
 
-### What is measured
+## Building from source
 
-Recognition runs on mediapipe's **world landmarks**: real 3D positions in
-metres, centred on the hand, not the normalised image coordinates the preview
-is drawn from. Image coordinates are a shadow - they change when the hand
-merely turns - while world coordinates describe the hand itself. A finger
-counts as extended when its tip is farther from the wrist than its middle
-knuckle, in three dimensions.
-
-Before anything measures them, landmark positions are averaged over the last
-few frames. Smoothing the numbers comes first, so every measurement downstream
-sees steady values instead of mediapipe's frame-to-frame guesses; once a value
-has been compared against a threshold, the noise has already turned into two
-opposite answers and no amount of voting recovers it.
-
----
-
-## Commands
-
-Only in `ACTIVE`.
-
-| Gesture | Key sent | Fires after | Then |
-|---|---|---|---|
-| `victory` | volume up | 0.5 s | repeats every 0.3 s while held |
-| `middle_ring_pinky` | volume down | 0.5 s | repeats every 0.3 s while held |
-| `rock` | play / pause | 0.5 s | once per hold |
-
-The dwell exists because the loop runs at 30 fps: a gesture held for a second
-is thirty frames, and without it that would be thirty keystrokes. Volume
-repeats because one press moves it 2%; play/pause fires once, because firing
-it twice puts you back where you started.
-
-`open_palm`, `fist` and `point` are deliberately bound to nothing - they
-change state, and the dwell here is shorter than the one the state machine
-uses, so a command bound to any of them would fire at the very moment of
-switching.
-
-The table is `ACTIONS` in `hermes/actions.py`.
-
----
-
-## Project layout
-
+Clone the repository:
 ```
-main.py              the loop that wires everything together
-hermes/
-  geometry.py        points and the distances between them  [pure]
-  signals.py         noisy stream -> steady answer: Hold, Repeater,
-                     Hysteresis, OneEuroFilter, DeadZone  [pure]
-  landmarks.py       how a hand is built: indices, fingers, skeleton  [pure]
-  camera.py          webcam: open, read, mirror flip, close
-  hand.py            mediapipe wrapper: frame -> 21 landmarks
-  hand_selector.py   result -> the one hand Hermes obeys  [pure]
-  recognition.py     world landmarks -> what the hand is doing  [pure]
-  anchors.py         normalised landmarks -> where the hand is  [pure]
-  state.py           states, transitions and the trackers behind them  [pure]
-  scroll.py          hand height -> whole scroll clicks  [pure]
-  actions.py         gesture -> media key, sent with pynput
-  cursor.py          a point in the frame -> the mouse pointer and its button
-  killswitch.py      global Esc listener that stops the app
-  overlay.py         drawing on the frame
-  fps.py             sliding-window fps counter
-models/              the mediapipe hand landmark model
-ARCHITECTURE.md      how it works, why, and what was rejected
-ROADMAP.md           milestones and what is left
+git clone https://github.com/Cheng98989/Hermes.git
+cd Hermes
 ```
 
-The modules marked pure import nothing but the standard library: data in, data
-out, no hardware. The clock counts as I/O for this purpose - `main.py` reads
-`perf_counter()` once per frame and hands the same instant to everyone, so
-nothing downstream has to reach for it.
+Create/activate a Python environment (developed with 3.11.8) and install the required dependencies, including `pyinstaller`. Then build:
+```
+pyinstaller Hermes.spec
+```
 
----
+The output — everything needed to run the app — will be in the `dist` folder.
 
-## Known limitations
+## License
 
-- **Light matters.** In a dark room lit only by the monitor, recognition
-  degrades badly: the webcam lengthens its exposure, the hand blurs, and
-  skin tone information is lost.
-- **Webcam settings matter.** Saturation or white balance left in an odd
-  state (from any other app - the driver keeps them) can break detection
-  entirely. Reset them under Windows Settings > Bluetooth & devices > Cameras.
-- **Frame rate is capped by the webcam**, not by the code: measured 30 fps at
-  640x480, of which only ~13 ms per frame is actual work. See `ROADMAP.md`.
-- One hand at a time by default (`Hand(number_of_hands=...)` to change it).
+Distributed under the **GPL-3.0-or-later** license. Full text in [LICENCE.txt](LICENCE.txt).
 
----
+## Development notes
 
-## How this was built
+The project started as a way to learn Python; it's also a school project, so whether development continues (also) depends on my discipline — there's no guarantee of ongoing maintenance.
 
-A school project, written to be understood rather than to be finished fast.
+While developing, I used AI as support, mainly for learning purposes: no vibecoding — the AI was a sounding board to discuss functions and solve problems, not something that wrote the project for me. AI was also used for documentation in the source code and the README; the final content has been reviewed by me either way.
 
-Design and code were worked out with Claude (Anthropic) acting as a tutor:
-the reasoning was done in conversation, the code typed by hand, with Claude
-correcting mistakes and rewriting passages along the way. The reasoning lives
-in `ARCHITECTURE.md`; the code carries one-line comments and nothing more.
+Built with:
+- Python 3.11.8
+- PySide6
+- MediaPipe
+- OpenCV
+- Pynput
 
-The findings recorded in `ROADMAP.md` - the webcam being the bottleneck, the
-thumb rotating around a pivot next to the wrist, `palm_size` collapsing under
-foreshortening - came from measurements taken on this machine.
+## Contact
+
+For bug reports, questions, or suggestions, open an issue on GitHub.
