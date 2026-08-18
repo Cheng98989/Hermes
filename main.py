@@ -9,7 +9,7 @@ from cv2.typing import MatLike
 from hermes.actions import Actions
 from hermes.anchors import finger_point, palm_point
 from hermes.camera import Camera, get_available_camera
-from hermes.cursor import Cursor, screen_size, to_screen
+from hermes.cursor import Cursor, to_screen
 from hermes.fps import FpsCounter
 from hermes.hand import Hand
 from hermes.hand_selector import HandSelector
@@ -17,6 +17,7 @@ from hermes.killswitch import KillSwitch
 from hermes.landmarks import FrameHands, WorldHands
 from hermes.overlay import Overlay
 from hermes.recognition import finger_gap, gesture_from_hands, pinch_distance, pinch_guard_ok
+from hermes import screen
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
 from hermes.state import DragTracker, JoinedFingers, StateMachine
@@ -73,7 +74,10 @@ audio_manager = AudioManager(config.audio_volume)
 
 app.setQuitOnLastWindowClosed(False)
 
-cursor = Cursor(*screen_size())
+cursor = Cursor()
+# resolved once, after QApplication exists: before that Windows reports a
+# scaled monitor smaller than it really is
+screen_area = screen.rect_for(config.screen)
 mapping_fraction = (config.zone_min, config.zone_max)
 actions = Actions()
 kill_switch = KillSwitch()
@@ -159,7 +163,7 @@ def process_frame() -> None:
     if state == CURSOR and mouse_position is not None:
         # mapped here rather than inside Cursor, so the dead zone can sit in
         # between: a radius in pixels is the same on both axes
-        target = to_screen(mouse_position, *cursor.screen_size, *mapping_fraction)
+        target = to_screen(mouse_position, screen_area, *mapping_fraction)
         cursor.move_to_pixels(dead_zone.update(target))
     else:
         dead_zone.reset()
@@ -226,7 +230,7 @@ quit_checker.timeout.connect(check_quit)
 quit_checker.start(100)
 
 preview = Preview(shared, cam.width, cam.height)
-settings = Settings(config, get_available_camera)
+settings = Settings(config, get_available_camera, screen.choices)
 tray = Tray(ICON_PATH, preview, settings, app.quit)
 tray.show()
 

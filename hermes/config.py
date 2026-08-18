@@ -18,7 +18,8 @@ MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 NO_SIGNAL_FRAME_PATH = ROOT / "assets" / "no_signal_frame.png"
 
 BASICS = (
-    "camera_index", "audio_volume", "camera_faces_you", "hand", "zone_min", "zone_max",
+    "camera_index", "audio_volume", "camera_faces_you", "screen", "hand", "zone_min",
+    "zone_max",
     "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
     "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
     "scroll_dead_zone",
@@ -26,11 +27,13 @@ BASICS = (
 PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
 
 CAMERA_INDEX = "camera_index"
+SCREEN = "screen"
 
 LABELS = {
     "camera_index": ("Camera", "Which webcam, counting from zero"),
     "audio_volume": ("Audio volume", "Volume of the audio feedback played during states transition"),
     "camera_faces_you": ("Camera faces you", "Mirror the picture; off if it looks away"),
+    "screen": ("Screen", "Which monitor the active zone covers; All spans the desktop"),
     "hand": ("Hand", "Which hand Hermes obeys; the other is ignored"),
     "zone_min": ("Active zone start", "The part of the picture that covers the screen"),
     "zone_max": ("Active zone end", "Wider means finer control but more hand travel"),
@@ -54,6 +57,11 @@ LABELS = {
     "cursor_beta": ("Pointer responsiveness", "Higher follows fast movement more closely"),
     "world_min_cutoff": ("Recognition smoothing", "The same, for the gesture recogniser"),
     "world_beta": ("Recognition responsiveness", "Beta scales with the signal; this one is metres"),
+}
+
+# the fixed options of a drop-down
+CHOICES = {
+    "hand": ("Right", "Left"),
 }
 
 # Name: (min, max, step, decimals)
@@ -111,6 +119,7 @@ class Config:
     camera_index: int = 0
     audio_volume: float = 0.6
     camera_faces_you: bool = True
+    screen: str = "Primary"
     hand: str = "Right"
     zone_min: float = 0.25
     zone_max: float = 0.75
@@ -195,6 +204,8 @@ STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
 # Audio
 # the folder comes first so that the sounds can be made configurable later:
 # every state change rings, and each ring should be swappable
+# TODO: audio configurabile, ogni transizione allo stato x puo avere un suono
+# si potrebbe mettere di default note del piano diverse e poi configurabili compreso volume singolo
 AUDIO_FOLDER = ROOT / "assets" / "audio"
 
 AUDIO_IDLE = AUDIO_FOLDER / "bell_ring.wav"

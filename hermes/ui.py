@@ -27,8 +27,10 @@ from PySide6.QtWidgets import (
 from hermes.config import (
     BASICS,
     CAMERA_INDEX,
+    CHOICES,
     NO_SIGNAL_FRAME_PATH,
     PREVIEW,
+    SCREEN,
     Config,
     check_config,
     label_and_tip,
@@ -67,7 +69,7 @@ def make_widget(name: str, value):
 
     if isinstance(value, str):
         widget = QComboBox()
-        widget.addItems(["Right", "Left"])
+        widget.addItems(CHOICES.get(name, (value,)))
         widget.setCurrentText(value)
         return widget
 
@@ -138,10 +140,11 @@ class Preview(QLabel):
 
 
 class Settings(QDialog):
-    def __init__(self, config: Config, get_camera) -> None:
+    def __init__(self, config: Config, get_camera, get_screens) -> None:
         super().__init__()
         self.config = config
         self.get_camera = get_camera
+        self.get_screens = get_screens
         self.setWindowTitle("Hermes settings")
         self.widgets = {}
         self.color_buttons = {}
@@ -190,6 +193,7 @@ class Settings(QDialog):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         QTimer.singleShot(0, self.refresh_cameras)
+        QTimer.singleShot(0, self.refresh_screens)
 
     def refresh_cameras(self) -> None:
         combo = self.widgets.get(CAMERA_INDEX)
@@ -202,6 +206,16 @@ class Settings(QDialog):
         combo.clear()
         combo.addItems([str(index) for index in available] or [wanted])
         combo.setEnabled(bool(available))
+        combo.setCurrentText(wanted)
+
+    def refresh_screens(self) -> None:
+        combo = self.widgets.get(SCREEN)
+        if combo is None:
+            return
+
+        wanted = combo.currentText() or self.config.screen
+        combo.clear()
+        combo.addItems(self.get_screens())
         combo.setCurrentText(wanted)
 
     def save_settings(self) -> None:

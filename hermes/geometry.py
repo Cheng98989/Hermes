@@ -1,4 +1,4 @@
-"""Points and the distances between them. Knows nothing about hands."""
+"""Points, rectangles, and the distances between them. Knows nothing about hands."""
 
 import math
 from typing import NamedTuple, Protocol
@@ -20,6 +20,14 @@ class Point(NamedTuple):
     x: float
     y: float
     z: float = 0.0
+
+
+# a corner and a size
+class Rect(NamedTuple):
+    x: int
+    y: int
+    width: int
+    height: int
 
 
 def distance_2d(a: XY, b: XY) -> float:

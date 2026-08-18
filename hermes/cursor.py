@@ -1,51 +1,34 @@
 """Moving the real mouse pointer. Windows only."""
 
-import ctypes
-
 from pynput.mouse import Button, Controller
 
-from hermes.geometry import Point
-
-
-# the primary monitor, not the whole desktop. In a function because
-# ctypes.windll does not exist on other platforms
-def screen_size() -> tuple[int, int]:
-    user32 = ctypes.windll.user32
-    return (user32.GetSystemMetrics(0), user32.GetSystemMetrics(1))
+from hermes.geometry import Point, Rect
 
 
 # where `value` falls inside the active zone, 0 to 1, clamped
 def _zone_fraction(value: float, zone_min: float, zone_max: float) -> float:
     return min(max((value - zone_min) / (zone_max - zone_min), 0.0), 1.0)
 
-# a point in the frame -> a pixel on the monitor, kept in floats: rounding
-# to whole pixels happens once, at the mouse
-def to_screen(
-    point: Point,
-    screen_width: int,
-    screen_height: int,
-    zone_min: float,
-    zone_max: float,
-) -> Point:
+
+def to_screen(point: Point, screen: Rect, zone_min: float, zone_max: float) -> Point:
     return Point(
-        _zone_fraction(point.x, zone_min, zone_max) * screen_width,
-        _zone_fraction(point.y, zone_min, zone_max) * screen_height,
+        screen.x + _zone_fraction(point.x, zone_min, zone_max) * screen.width,
+        screen.y + _zone_fraction(point.y, zone_min, zone_max) * screen.height,
     )
 
 
 # takes points, not landmarks: which point of the hand drives the pointer is
 # decided by the caller
 class Cursor:
-    def __init__(self, screen_width: int, screen_height: int) -> None:
+    def __init__(self) -> None:
         self._mouse = Controller()
-        self.screen_size = (screen_width, screen_height)
         self._pressed = False
 
     # takes a point already in screen pixels: the caller maps it, so that the
-    # dead zone can sit between the mapping and the mouse
+    # dead zone can sit between the mapping and the mouse. Rounded rather than
     def move_to_pixels(self, point: Point) -> Point:
-        position = Point(int(point.x), int(point.y))
-        self._mouse.position = int(position.x), int(position.y)
+        position = Point(round(point.x), round(point.y))
+        self._mouse.position = (int(position.x), int(position.y))
         return position
 
     # safe to call every frame: only a change reaches the operating system
