@@ -18,7 +18,7 @@ MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 NO_SIGNAL_FRAME_PATH = ROOT / "assets" / "no_signal_frame.png"
 
 BASICS = (
-    "camera_index", "camera_faces_you", "hand", "zone_min", "zone_max",
+    "camera_index", "audio_volume", "camera_faces_you", "hand", "zone_min", "zone_max",
     "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
     "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
     "scroll_dead_zone",
@@ -29,6 +29,7 @@ CAMERA_INDEX = "camera_index"
 
 LABELS = {
     "camera_index": ("Camera", "Which webcam, counting from zero"),
+    "audio_volume": ("Audio volume", "Volume of the audio feedback played during states transition"),
     "camera_faces_you": ("Camera faces you", "Mirror the picture; off if it looks away"),
     "hand": ("Hand", "Which hand Hermes obeys; the other is ignored"),
     "zone_min": ("Active zone start", "The part of the picture that covers the screen"),
@@ -58,6 +59,7 @@ LABELS = {
 # Name: (min, max, step, decimals)
 RANGES = {
     "camera_index": (0, 10, 1, 0),
+    "audio_volume": (0, 1, 0.05, 2),
     "zone_min": (0.0, 1.0, 0.05, 2),
     "zone_max": (0.0, 1.0, 0.05, 2),
     "cursor_dead_zone_radius": (0.0, 50.0, 0.5, 1),
@@ -107,6 +109,7 @@ def label_and_tip(name: str) -> tuple[str, str]:
 class Config:
     # --- basics --------------------------------------------------------------
     camera_index: int = 0
+    audio_volume: float = 0.6
     camera_faces_you: bool = True
     hand: str = "Right"
     zone_min: float = 0.25
@@ -177,3 +180,33 @@ def load() -> Config:
         if key in valid:
             filtered[key] = value
     return Config(**filtered)
+
+
+# STATES
+IDLE = "IDLE"
+ACTIVE = "ACTIVE"
+CURSOR = "CURSOR"
+SCROLL = "SCROLL"
+UNKNOWN = "UNKNOWN"
+
+STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
+
+
+# Audio
+# the folder comes first so that the sounds can be made configurable later:
+# every state change rings, and each ring should be swappable
+AUDIO_FOLDER = ROOT / "assets" / "audio"
+
+AUDIO_IDLE = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_ACTIVE = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_CURSOR = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_SCROLL = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_UNKNOWN = AUDIO_FOLDER / "bell_ring.wav"
+
+AUDIO_STATES = {
+    IDLE: AUDIO_IDLE,
+    ACTIVE: AUDIO_ACTIVE,
+    CURSOR: AUDIO_CURSOR,
+    SCROLL: AUDIO_SCROLL,
+    UNKNOWN: AUDIO_UNKNOWN,
+}

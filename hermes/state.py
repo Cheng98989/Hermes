@@ -1,13 +1,9 @@
 """The states Hermes can be in, and the trackers that feed them."""
 
+from collections.abc import Callable
+
 from hermes.signals import Hold, Hysteresis
-
-IDLE = "IDLE"
-ACTIVE = "ACTIVE"
-CURSOR = "CURSOR"
-SCROLL = "SCROLL"
-
-STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
+from hermes.config import IDLE, ACTIVE, CURSOR, SCROLL, STATES
 
 # (current state, gesture) -> (new state, seconds it must be held).
 TRANSITIONS = {
@@ -27,22 +23,31 @@ TRANSITIONS = {
 
 
 class StateMachine:
-    def __init__(self) -> None:
+    def __init__(self, on_change) -> None:
         self.state = IDLE
+        self.on_change = on_change
 
     def update(self, gesture: str, held: float) -> str:
         found = TRANSITIONS.get((self.state, gesture))
         if found is not None:
             new_state, required = found
             if held >= required:
-                self.state = new_state
+                self._change_state(new_state)
 
         return self.state
 
     def set_state(self, state: str) -> None:
         if state not in STATES:
             raise ValueError(f"unknown state: {state}")
+        self._change_state(state)
+
+    # only a real move rings: the camera-lost branch forces IDLE every frame
+    def _change_state(self, state: str) -> None:
+        if state == self.state:
+            return
+
         self.state = state
+        self.on_change(state)
 
 
 class DragTracker:

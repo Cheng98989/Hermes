@@ -19,9 +19,10 @@ from hermes.overlay import Overlay
 from hermes.recognition import finger_gap, gesture_from_hands, pinch_distance, pinch_guard_ok
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
-from hermes.state import IDLE, ACTIVE, CURSOR, SCROLL, DragTracker, JoinedFingers, StateMachine
-from hermes.config import ICON_PATH, load
+from hermes.state import DragTracker, JoinedFingers, StateMachine
+from hermes.config import ICON_PATH, load, IDLE, ACTIVE, CURSOR, SCROLL
 from hermes.ui import Preview, Tray, Settings
+from hermes.audio import AudioManager
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -65,10 +66,12 @@ hand = Hand(
     config.min_tracking_confidence,
 )
 
+# --- audio ------------------------------------------------------------------
+audio_manager = AudioManager(config.audio_volume)
+
 # --- UI ---------------------------------------------------------------------
 
 app.setQuitOnLastWindowClosed(False)
-
 
 cursor = Cursor(*screen_size())
 mapping_fraction = (config.zone_min, config.zone_max)
@@ -83,7 +86,7 @@ one_euro_smoother = OneEuroLandmarks(config.cursor_min_cutoff, config.cursor_bet
 one_euro_smoother_world = OneEuroLandmarks(config.world_min_cutoff, config.world_beta)    # world
 joined_fingers = JoinedFingers(on_below=config.fingers_joined, off_above=config.fingers_apart)
 gesture_hold = Hold()
-state_machine = StateMachine()    # TODO: make the transition dwells configurable too
+state_machine = StateMachine(audio_manager.play)    # TODO: make the transition dwells configurable too
 
 # --- controls ---------------------------------------------------------------
 
@@ -93,6 +96,8 @@ scroll_rate = ScrollRate(config.scroll_dead_zone, config.scroll_span, config.scr
 
 now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
+
+
 
 
 # what the two threads pass between them
@@ -146,7 +151,7 @@ def process_frame() -> None:
 
     # how long the gesture has been held
     held = gesture_hold.update(gesture, now)
-    # which mode that puts us in
+    # which mode that puts us in; the machine rings on its own when it moves
     state = state_machine.update(gesture, held)
 
     # cursor mode
