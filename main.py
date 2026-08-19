@@ -2,6 +2,8 @@
 
 import time
 import threading
+import subprocess
+import sys
 
 from cv2.typing import MatLike
 
@@ -30,7 +32,7 @@ from hermes import screen
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
 from hermes.state import DragTracker, JoinedFingers, RightClickTracker, StateMachine
-from hermes.config import ICON_PATH, load, IDLE, ACTIVE, CURSOR, SCROLL
+from hermes.config import ICON_PATH, load, IDLE, ACTIVE, CURSOR, SCROLL, BUNDLE
 from hermes.ui import Preview, Tray, Settings
 from hermes.audio import AudioManager
 
@@ -247,13 +249,20 @@ def check_quit() -> None:
     if kill_switch.triggered or not shared.running or worker_stalled:
         app.quit()
 
+restart_wanted = False
+
+def apply_restart() -> None:
+    global restart_wanted
+    restart_wanted = True
+    app.quit()
+
 quit_checker = QTimer(app)
 quit_checker.timeout.connect(check_quit)
 quit_checker.start(100)
 
 preview = Preview(shared, cam.width, cam.height)
-settings = Settings(config, get_available_camera, screen.choices)
-tray = Tray(ICON_PATH, preview, settings, app.quit)
+settings = Settings(config, get_available_camera, screen.choices, apply_restart)
+tray = Tray(ICON_PATH, preview, settings, app.quit, apply_restart)
 tray.show()
 
 if config.show_preview:
@@ -270,3 +279,10 @@ if stopped:
     hand.close()
 
 kill_switch.stop()
+
+if restart_wanted:
+    if BUNDLE is None:
+        command = [sys.executable, *sys.argv]       # python.exe main.py
+    else:
+        command = [sys.executable, *sys.argv[1:]]   # Hermes.exe
+    subprocess.Popen(command)

@@ -146,11 +146,12 @@ class Preview(QLabel):
 
 
 class Settings(QDialog):
-    def __init__(self, config: Config, get_camera, get_screens) -> None:
+    def __init__(self, config: Config, get_camera, get_screens, on_restart) -> None:
         super().__init__()
         self.config = config
         self.get_camera = get_camera
         self.get_screens = get_screens
+        self.on_restart = on_restart
         self.setWindowTitle("Hermes settings")
         self.widgets = {}
         self.color_buttons = {}
@@ -187,12 +188,17 @@ class Settings(QDialog):
             page.setLayout(form)
             tabs.addTab(page, page_name)
 
+
+        self.restart_checkbox = QCheckBox("Restart after saving")
+        self.restart_checkbox.setToolTip("Some changes are only applied after a restart")
+        self.restart_checkbox.setChecked(True)
+
         save_button = QPushButton("Save")
         save_button.clicked.connect(self.save_settings)
 
         outer = QVBoxLayout()
         outer.addWidget(tabs)
-        outer.addWidget(QLabel("Changes apply on restart"))
+        outer.addWidget(self.restart_checkbox)
         outer.addWidget(save_button)
         self.setLayout(outer)
 
@@ -240,9 +246,13 @@ class Settings(QDialog):
         save(self.config)
         self.close()
 
+        # after the file is written, so that the new process reads it
+        if self.restart_checkbox.isChecked():
+            self.on_restart()
+
 
 class Tray(QSystemTrayIcon):
-    def __init__(self, icon_path, preview: Preview, settings: Settings, on_quit) -> None:
+    def __init__(self, icon_path, preview: Preview, settings: Settings, on_quit, on_restart) -> None:
         icon = QIcon(str(icon_path))
         if not icon:
             pixmap = QPixmap(64, 64)
@@ -265,6 +275,10 @@ class Tray(QSystemTrayIcon):
         self.menu.addAction(self.settings_action)
 
         self.menu.addSeparator()
+
+        self.restart_action = QAction("Restart", self.menu)
+        self.restart_action.triggered.connect(on_restart)
+        self.menu.addAction(self.restart_action)
 
         self.quit_action = QAction("Quit", self.menu)
         self.quit_action.triggered.connect(on_quit)
