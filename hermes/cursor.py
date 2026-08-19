@@ -43,6 +43,10 @@ class Cursor:
 
         self._pressed = pressed
 
+    # press and release in one go, fire is decided by RightClickTracker
+    def right_click(self) -> None:
+        self._mouse.click(Button.right)
+
     # positive is up. Zero is dropped: most frames produce no click at all
     def scroll(self, clicks: int) -> None:
         if clicks:

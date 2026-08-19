@@ -37,16 +37,31 @@ FINGERS = {
     "pinky":  (PINKY_TIP, PINKY_PIP),
 }
 
+# gestures vocabulary
+NONE = "none"
+UNKNOWN = "unknown"
+FIST = "fist"
+POINT = "point"
+VICTORY = "victory"
+THREE = "three"
+MIDDLE_RING_PINKY = "middle_ring_pinky"
+ROCK = "rock"
+ROCK_WITH_RING = "rock_with_ring"
+OPEN_PALM = "open_palm"
+VICTORY_CLOSED = "victory_closed"
+PINKY_PINCH = "pinky_pinch"
+PINKY_READY = "pinky_ready"
+
 # extended fingers -> gesture name
 GESTURES = {
-    frozenset():                                      "fist",
-    frozenset({"index"}):                             "point",
-    frozenset({"index", "middle"}):                   "victory",
-    frozenset({"index", "middle", "ring"}):           "three",
-    frozenset({"middle", "ring", "pinky"}):           "middle_ring_pinky",
-    frozenset({"index", "pinky"}):                    "rock",
-    frozenset({"index", "ring", "pinky"}):            "rock_with_ring",
-    frozenset({"index", "middle", "ring", "pinky"}):  "open_palm",
+    frozenset():                                      FIST,
+    frozenset({"index"}):                             POINT,
+    frozenset({"index", "middle"}):                   VICTORY,
+    frozenset({"index", "middle", "ring"}):           THREE,
+    frozenset({"middle", "ring", "pinky"}):           MIDDLE_RING_PINKY,
+    frozenset({"index", "pinky"}):                    ROCK,
+    frozenset({"index", "ring", "pinky"}):            ROCK_WITH_RING,
+    frozenset({"index", "middle", "ring", "pinky"}):  OPEN_PALM,
 }
 
 
@@ -61,13 +76,13 @@ def fingers_up(hand) -> set[str]:
 
 
 def gesture_name(hand) -> str:
-    return GESTURES.get(frozenset(fingers_up(hand)), "unknown")
+    return GESTURES.get(frozenset(fingers_up(hand)), UNKNOWN)
 
 
-# "none" when no hand is in frame
+# NONE when no hand is in frame
 def gesture_from_hands(world: WorldHands) -> str:
     if not world:
-        return "none"
+        return NONE
 
     return gesture_name(world[0])
 
@@ -78,12 +93,12 @@ def gesture_from_hands(world: WorldHands) -> str:
 GUARD_FINGERS = {"middle", "ring", "pinky"}
 
 
-def pinch_distance(world: WorldHands) -> float:
+def pinch_distance(world: WorldHands, tip_a: int, tip_b: int) -> float:
     if not world:
         return math.inf
 
     hand = world[0]
-    return distance_2d(hand[THUMB_TIP], hand[INDEX_TIP]) / palm_size(hand)
+    return distance_2d(hand[tip_a], hand[tip_b]) / palm_size(hand)
 
 
 def pinch_guard_ok(world: WorldHands) -> bool:

@@ -21,6 +21,7 @@ BASICS = (
     "camera_index", "audio_volume", "camera_faces_you", "screen", "hand", "zone_min",
     "zone_max",
     "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
+    "pinky_pinch_close", "pinky_pinch_open", "pinky_ready_close", "pinky_ready_open",
     "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
     "scroll_dead_zone",
 )
@@ -41,6 +42,10 @@ LABELS = {
     "pinch_close": ("Pinch to click", "How close thumb and index must be to press"),
     "pinch_open": ("Pinch to release", "How far apart to let go; must exceed the above"),
     "pinch_dwell": ("Pinch delay", "Seconds to hold before the click registers"),
+    "pinky_pinch_close": ("Pinky pinch to right click", "How close thumb and little finger must be"),
+    "pinky_pinch_open": ("Pinky pinch release", "How far apart to let go; must exceed the above"),
+    "pinky_ready_close": ("Right click ready", "Thumb this near the pinky keeps Cursor mode"),
+    "pinky_ready_open": ("Right click ready release", "How far the thumb spreads to leave it"),
     "fingers_joined": ("Fingers together", "How close index and middle must be to scroll"),
     "fingers_apart": ("Fingers apart", "How far apart they must be to stop scrolling"),
     "scroll_speed": ("Scroll speed", "Clicks per second at full tilt"),
@@ -74,6 +79,10 @@ RANGES = {
     "pinch_close": (0.0, 3.0, 0.01, 2),
     "pinch_open": (0.0, 3.0, 0.01, 2),
     "pinch_dwell": (0.0, 5.0, 0.05, 2),
+    "pinky_pinch_close": (0.0, 3.0, 0.01, 2),
+    "pinky_pinch_open": (0.0, 3.0, 0.01, 2),
+    "pinky_ready_close": (0.0, 3.0, 0.01, 2),
+    "pinky_ready_open": (0.0, 3.0, 0.01, 2),
     "fingers_joined": (0.0, 3.0, 0.01, 2),
     "fingers_apart": (0.0, 3.0, 0.01, 2),
     "scroll_speed": (1.0, 60.0, 1.0, 1),
@@ -91,6 +100,8 @@ RANGES = {
 ORDERED_PAIRS = (
     ("zone_min", "zone_max"),
     ("pinch_close", "pinch_open"),
+    ("pinky_pinch_close", "pinky_pinch_open"),
+    ("pinky_ready_close", "pinky_ready_open"),
     ("fingers_joined", "fingers_apart"),
     ("scroll_dead_zone", "scroll_span"),
 )
@@ -127,6 +138,10 @@ class Config:
     pinch_close: float = 0.25
     pinch_open: float = 0.35
     pinch_dwell: float = 0.0
+    pinky_pinch_close: float = 0.20
+    pinky_pinch_open: float = 0.35
+    pinky_ready_close: float = 1.0
+    pinky_ready_open: float = 1.15
     fingers_joined: float = 0.20
     fingers_apart: float = 0.30
     scroll_speed: float = 12.0

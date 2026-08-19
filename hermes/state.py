@@ -2,23 +2,32 @@
 
 from collections.abc import Callable
 
-from hermes.signals import Hold, Hysteresis
+from hermes.signals import Hold, Hysteresis, Repeater
 from hermes.config import IDLE, ACTIVE, CURSOR, SCROLL, STATES
+from hermes.recognition import (
+    FIST,
+    NONE,
+    OPEN_PALM,
+    PINKY_PINCH,
+    POINT,
+    VICTORY,
+    VICTORY_CLOSED,
+)
 
 # (current state, gesture) -> (new state, seconds it must be held).
 TRANSITIONS = {
-    (IDLE,   "open_palm"): (ACTIVE, 1.0),
-    (ACTIVE, "fist"):      (IDLE,   1.0),
-    (ACTIVE, "none"):      (IDLE,   3.0),
-    (ACTIVE, "point"):     (CURSOR, 0.5),
-    (CURSOR, "open_palm"): (ACTIVE, 0.5),
-    (CURSOR, "none"):      (IDLE,   3.0),
+    (IDLE,   OPEN_PALM): (ACTIVE, 1.0),
+    (ACTIVE, FIST):      (IDLE,   1.0),
+    (ACTIVE, NONE):      (IDLE,   2.0),
+    (ACTIVE, POINT):     (CURSOR, 0.5),
+    (CURSOR, OPEN_PALM): (ACTIVE, 0.5),
+    (CURSOR, NONE):      (IDLE,   2.0),
 
-    (CURSOR, "victory_closed"): (SCROLL, 0.3),
-    (SCROLL, "victory"):        (CURSOR, 0.2),   # open the fingers to leave
-    (SCROLL, "point"):          (CURSOR, 0.2),
-    (SCROLL, "open_palm"):      (ACTIVE, 0.5),
-    (SCROLL, "none"):           (IDLE,   3.0),
+    (CURSOR, VICTORY_CLOSED): (SCROLL, 0.3),
+    (SCROLL, VICTORY):        (CURSOR, 0.2),   # open the fingers to leave
+    (SCROLL, POINT):          (CURSOR, 0.2),
+    (SCROLL, OPEN_PALM):      (ACTIVE, 0.5),
+    (SCROLL, NONE):           (IDLE,   2.0),
 }
 
 
@@ -71,16 +80,24 @@ class DragTracker:
         return self.dragging
 
 
+class RightClickTracker:
+    def __init__(self) -> None:
+        self.repeater = Repeater()
+
+    def update(self, gesture: str, now: float) -> bool:
+        return self.repeater.should_fire(gesture == PINKY_PINCH, None, now)
+
+
 class JoinedFingers:
     def __init__(self, on_below: float, off_above: float) -> None:
         self.switch = Hysteresis(on_below, off_above)
 
-    def update(self, gesture: str, gap: float) -> str:
+    def update(self, gesture: str, gap: float, when: str, becomes: str) -> str:
         # every frame, whatever the gesture: a switch that stops being fed
         # freezes, and answers with a stale reading later
         joined = self.switch.update(gap)
 
-        if gesture == "victory" and joined:
-            return "victory_closed"
+        if gesture == when and joined:
+            return becomes
 
         return gesture

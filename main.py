@@ -14,13 +14,23 @@ from hermes.fps import FpsCounter
 from hermes.hand import Hand
 from hermes.hand_selector import HandSelector
 from hermes.killswitch import KillSwitch
-from hermes.landmarks import FrameHands, WorldHands
+from hermes.landmarks import FrameHands, WorldHands, RIGHT_CLICK_TIPS, LEFT_CLICK_TIPS
 from hermes.overlay import Overlay
-from hermes.recognition import finger_gap, gesture_from_hands, pinch_distance, pinch_guard_ok
+from hermes.recognition import (
+    OPEN_PALM,
+    PINKY_PINCH,
+    PINKY_READY,
+    VICTORY,
+    VICTORY_CLOSED,
+    finger_gap,
+    gesture_from_hands,
+    pinch_distance,
+    pinch_guard_ok,
+)
 from hermes import screen
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
-from hermes.state import DragTracker, JoinedFingers, StateMachine
+from hermes.state import DragTracker, JoinedFingers, RightClickTracker, StateMachine
 from hermes.config import ICON_PATH, load, IDLE, ACTIVE, CURSOR, SCROLL
 from hermes.ui import Preview, Tray, Settings
 from hermes.audio import AudioManager
@@ -88,7 +98,15 @@ overlay = Overlay(cam.width, cam.height, config.state_colors)
 hand_selector = HandSelector(config.hand, labels_mirrored=config.camera_faces_you)
 one_euro_smoother = OneEuroLandmarks(config.cursor_min_cutoff, config.cursor_beta)    # normalised
 one_euro_smoother_world = OneEuroLandmarks(config.world_min_cutoff, config.world_beta)    # world
-joined_fingers = JoinedFingers(on_below=config.fingers_joined, off_above=config.fingers_apart)
+victory_joined_fingers = JoinedFingers(
+    on_below=config.fingers_joined, off_above=config.fingers_apart
+)
+open_palm_joined_fingers = JoinedFingers(
+    on_below=config.pinky_pinch_close, off_above=config.pinky_pinch_open
+)
+pinky_ready_fingers = JoinedFingers(
+    on_below=config.pinky_ready_close, off_above=config.pinky_ready_open
+)
 gesture_hold = Hold()
 state_machine = StateMachine(audio_manager.play)    # TODO: make the transition dwells configurable too
 
@@ -96,6 +114,7 @@ state_machine = StateMachine(audio_manager.play)    # TODO: make the transition 
 
 dead_zone = DeadZone(radius=config.cursor_dead_zone_radius)
 drag_tracker = DragTracker(config.pinch_close, config.pinch_open, config.pinch_dwell)
+right_click_tracker = RightClickTracker()
 scroll_rate = ScrollRate(config.scroll_dead_zone, config.scroll_span, config.scroll_speed)
 
 now = time.perf_counter()
@@ -146,12 +165,21 @@ def process_frame() -> None:
     # name the pose
     gesture = gesture_from_hands(hands)
     gap = finger_gap(hands)
-    # victory becomes victory_closed while the two fingers touch
-    gesture = joined_fingers.update(gesture, gap)
+    left_click_distance = pinch_distance(hands, *LEFT_CLICK_TIPS)
+    right_click_distance = pinch_distance(hands, *RIGHT_CLICK_TIPS)
+
+    gesture = victory_joined_fingers.update(gesture, gap, VICTORY, VICTORY_CLOSED)
+    gesture = open_palm_joined_fingers.update(
+        gesture, right_click_distance, OPEN_PALM, PINKY_PINCH
+    )
+    gesture = pinky_ready_fingers.update(
+        gesture, right_click_distance, OPEN_PALM, PINKY_READY
+    )
+
     # pinch
-    distance = pinch_distance(hands)
     guard = pinch_guard_ok(hands)
-    drag_status = drag_tracker.update(distance, guard, now)
+    drag_status = drag_tracker.update(left_click_distance, guard, now)
+    right_click_wanted = right_click_tracker.update(gesture, now)
 
     # how long the gesture has been held
     held = gesture_hold.update(gesture, now)
@@ -167,6 +195,8 @@ def process_frame() -> None:
         cursor.move_to_pixels(dead_zone.update(target))
     else:
         dead_zone.reset()
+    if right_click_wanted and state == CURSOR:
+        cursor.right_click()
     cursor.set_pressed(drag_status and state == CURSOR)
 
     # scroll mode
@@ -191,7 +221,8 @@ def process_frame() -> None:
         overlay.draw_fps(frame, fps)
         overlay.draw_text(
             frame,
-            f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | pinch {distance:.2f} | "
+            f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | "
+            f"left {left_click_distance:.2f} | right {right_click_distance:.2f} | "
             f"drag {drag_status} | guard {guard}",
             y=100,
         )

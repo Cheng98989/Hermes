@@ -35,6 +35,10 @@ PINKY_PIP = 18
 PINKY_DIP = 19
 PINKY_TIP = 20
 
+# the two tips each click watches
+LEFT_CLICK_TIPS = (THUMB_TIP, INDEX_TIP)
+RIGHT_CLICK_TIPS = (THUMB_TIP, PINKY_TIP)
+
 # the knuckles the pointer follows; the index MCP is left out
 KNUCKLES_FOR_CURSOR = (MIDDLE_MCP, RING_MCP, PINKY_MCP)
 
