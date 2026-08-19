@@ -4,7 +4,7 @@ import cv2
 from dataclasses import fields
 import numpy as np
 
-from PySide6.QtCore import QSize, QTimer
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QAction, QColor, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -120,7 +120,6 @@ class Preview(QLabel):
         self.shared = shared
         self.setWindowTitle("Hermes")
         self.resize(width, height)
-        self.setScaledContents(True)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(preview_refresh_time)
@@ -136,7 +135,14 @@ class Preview(QLabel):
 
         height, width = frame.shape[:2]
         image = QImage(frame.data, width, height, frame.strides[0], QImage.Format.Format_BGR888)
-        self.setPixmap(QPixmap.fromImage(image))
+        pixmap = QPixmap.fromImage(image)
+        self.setPixmap(
+            pixmap.scaled(
+                self.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
 
 
 class Settings(QDialog):
