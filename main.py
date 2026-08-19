@@ -1,6 +1,5 @@
 """The loop. The only place that knows the whole chain."""
 
-import argparse
 import time
 import threading
 
@@ -37,14 +36,6 @@ from hermes.audio import AudioManager
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
-
-parser = argparse.ArgumentParser(description="Control the desktop with hand gestures")
-parser.add_argument(
-    "--raw-landmarks",
-    action="store_true",
-    help="draw the skeleton as mediapipe reports it, without smoothing",
-)
-args = parser.parse_args()
 
 config = load()
 
@@ -214,7 +205,7 @@ def process_frame() -> None:
     # preview
     # --raw-landmarks draws what mediapipe reported, unsmoothed
     if config.show_skeleton:
-        overlay.draw_landmarks(frame, selected_2d if args.raw_landmarks else hands2d)
+        overlay.draw_landmarks(frame, hands2d)
     if config.show_mapping_area:
         overlay.draw_mouse_mapping_area(frame, *mapping_fraction)
     if config.show_debug_text:
