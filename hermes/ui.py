@@ -32,6 +32,7 @@ from hermes.config import (
     NO_SIGNAL_FRAME_PATH,
     PREVIEW,
     SCREEN,
+    LIVE,
     Config,
     check_config,
     label_and_tip,
@@ -212,11 +213,6 @@ class Settings(QDialog):
             page.setLayout(form)
             tabs.addTab(page, page_name)
 
-
-        self.restart_checkbox = QCheckBox("Restart after saving")
-        self.restart_checkbox.setToolTip("Some changes are only applied after a restart")
-        self.restart_checkbox.setChecked(True)
-
         box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
             | QDialogButtonBox.StandardButton.Cancel
@@ -230,7 +226,6 @@ class Settings(QDialog):
 
         outer = QVBoxLayout()
         outer.addWidget(tabs)
-        outer.addWidget(self.restart_checkbox)
         outer.addWidget(box)
         self.setLayout(outer)
 
@@ -273,11 +268,18 @@ class Settings(QDialog):
         combo.setCurrentText(wanted)
 
     def save_settings(self) -> None:
+        restart_on_save = False
         for name, widget in self.widgets.items():
-            setattr(self.config, name, read_widget(name, widget))
+            new_value = read_widget(name, widget)
+            if getattr(self.config, name) != new_value and name not in LIVE:
+                restart_on_save = True
+            setattr(self.config, name, new_value)
 
         for state, button in self.color_buttons.items():
-            self.config.state_colors[state] = button.bgr()
+            new_value = button.bgr()
+            if self.config.state_colors[state] != new_value:
+                restart_on_save = True
+            self.config.state_colors[state] = new_value
 
         errors = check_config(self.config)
         if errors:
@@ -288,8 +290,7 @@ class Settings(QDialog):
         save(self.config)
         self.close()
 
-        # after the file is written, so that the new process reads it
-        if self.restart_checkbox.isChecked():
+        if restart_on_save:
             self.on_restart()
 
     def restore_defaults(self) -> None:

@@ -1,4 +1,4 @@
-"""Global Esc listener: works even when the preview window is not focused."""
+"""Global listener: works even when the preview window is not focused."""
 
 from pynput import keyboard
 

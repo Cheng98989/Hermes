@@ -60,6 +60,10 @@ BASICS = (
 )
 PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
 
+# settings that don't require a restart. Not camera_faces_you: HandSelector
+# copied it at startup, so it would mirror the picture but obey the wrong hand
+LIVE = ("show_skeleton", "show_debug_text", "show_mapping_area")
+
 CAMERA_INDEX = "camera_index"
 SCREEN = "screen"
 
