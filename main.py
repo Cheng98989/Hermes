@@ -14,7 +14,7 @@ from hermes.cursor import Cursor, to_screen
 from hermes.fps import FpsCounter
 from hermes.hand import Hand
 from hermes.hand_selector import HandSelector
-from hermes.killswitch import KillSwitch
+from hermes.listener import Listener
 from hermes.landmarks import FrameHands, WorldHands, RIGHT_CLICK_TIPS, LEFT_CLICK_TIPS
 from hermes.overlay import Overlay
 from hermes.recognition import (
@@ -83,7 +83,7 @@ cursor = Cursor()
 screen_area = screen.rect_for(config.screen)
 mapping_fraction = (config.zone_min, config.zone_max)
 actions = Actions()
-kill_switch = KillSwitch()
+listener = Listener()
 overlay = Overlay(cam.width, cam.height, config.state_colors)
 
 # --- recognition ------------------------------------------------------------
@@ -174,10 +174,12 @@ def process_frame() -> None:
     drag_status = drag_tracker.update(left_click_distance, guard, now)
     right_click_wanted = right_click_tracker.update(gesture, now)
 
+    paused = listener.pause
+
     # how long the gesture has been held
-    held = gesture_hold.update(gesture, now)
+    held = gesture_hold.update(None if paused else gesture, now)
     # which mode that puts us in; the machine rings on its own when it moves
-    state = state_machine.update(gesture, held)
+    state = state_machine.update(gesture, held, paused)
 
     # cursor mode
     mouse_position = palm_point(hands2d)
@@ -206,6 +208,8 @@ def process_frame() -> None:
 
     # preview
     # --raw-landmarks draws what mediapipe reported, unsmoothed
+    if paused:
+        overlay.draw_text(frame, "PAUSED", y=160)
     if config.show_skeleton:
         overlay.draw_landmarks(frame, hands2d)
     if config.show_mapping_area:
@@ -246,7 +250,7 @@ def stop_work(max_time: float) -> bool:
 
 def check_quit() -> None:
     worker_stalled = time.perf_counter() - shared.last_frame_time > 2
-    if kill_switch.triggered or not shared.running or worker_stalled:
+    if listener.quit or not shared.running or worker_stalled:
         app.quit()
 
 restart_wanted = False
@@ -278,7 +282,7 @@ if stopped:
     cam.close()
     hand.close()
 
-kill_switch.stop()
+listener.stop()
 
 if restart_wanted:
     if BUNDLE is None:

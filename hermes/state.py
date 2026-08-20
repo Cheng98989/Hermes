@@ -36,7 +36,11 @@ class StateMachine:
         self.state = IDLE
         self.on_change = on_change
 
-    def update(self, gesture: str, held: float) -> str:
+    def update(self, gesture: str, held: float, paused: bool) -> str:
+        if paused:
+            self._change_state(IDLE)
+            return self.state
+
         found = TRANSITIONS.get((self.state, gesture))
         if found is not None:
             new_state, required = found
