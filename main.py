@@ -101,7 +101,8 @@ pinky_ready_fingers = JoinedFingers(
     on_below=config.pinky_ready_close, off_above=config.pinky_ready_open
 )
 gesture_hold = Hold()
-state_machine = StateMachine(audio_manager.play)    # TODO: make the transition dwells configurable too
+# TODO: make the transition dwells configurable too
+state_machine = StateMachine(audio_manager.play)
 
 # --- controls ---------------------------------------------------------------
 
@@ -112,8 +113,6 @@ scroll_rate = ScrollRate(config.scroll_dead_zone, config.scroll_span, config.scr
 
 now = time.perf_counter()
 fps_counter = FpsCounter(now, 60)
-
-
 
 
 # what the two threads pass between them
@@ -254,6 +253,7 @@ def check_quit() -> None:
         app.quit()
 
 restart_wanted = False
+
 
 def apply_restart() -> None:
     global restart_wanted

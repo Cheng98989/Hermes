@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
+    QDialogButtonBox,
 )
 
 from hermes.config import (
@@ -40,9 +41,6 @@ from hermes.config import (
 
 _no_signal = cv2.imread(str(NO_SIGNAL_FRAME_PATH))
 NO_SIGNAL_FRAME = _no_signal if _no_signal is not None else np.zeros((720, 1280, 3), dtype=np.uint8)
-
-def list_to_color(bgr: list[int]) -> QColor:
-    return QColor(bgr[2], bgr[1], bgr[0])
 
 
 def make_widget(name: str, value):
@@ -89,6 +87,7 @@ def read_widget(name: str, widget):
 
     return widget.value()
 
+
 def write_widget(name: str, widget, value) -> None:
     if isinstance(widget, QCheckBox):
         widget.setChecked(value)
@@ -101,6 +100,11 @@ def write_widget(name: str, widget, value) -> None:
         return
 
     widget.setValue(value)
+
+
+# the config keeps colours the way OpenCV wants them, blue first
+def list_to_color(bgr: list[int]) -> QColor:
+    return QColor(bgr[2], bgr[1], bgr[0])
 
 
 class ColorButton(QPushButton):
@@ -213,13 +217,21 @@ class Settings(QDialog):
         self.restart_checkbox.setToolTip("Some changes are only applied after a restart")
         self.restart_checkbox.setChecked(True)
 
-        save_button = QPushButton("Save")
-        save_button.clicked.connect(self.save_settings)
+        box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.RestoreDefaults
+        )
+
+        box.accepted.connect(self.save_settings)
+        box.rejected.connect(self.close)
+        restore = box.button(QDialogButtonBox.StandardButton.RestoreDefaults)
+        restore.clicked.connect(self.restore_defaults)
 
         outer = QVBoxLayout()
         outer.addWidget(tabs)
         outer.addWidget(self.restart_checkbox)
-        outer.addWidget(save_button)
+        outer.addWidget(box)
         self.setLayout(outer)
 
     def fill_widgets(self, config: Config) -> None:
@@ -280,9 +292,14 @@ class Settings(QDialog):
         if self.restart_checkbox.isChecked():
             self.on_restart()
 
+    def restore_defaults(self) -> None:
+        self.fill_widgets(Config())
+
 
 class Tray(QSystemTrayIcon):
-    def __init__(self, icon_path, preview: Preview, settings: Settings, on_quit, on_restart) -> None:
+    def __init__(
+        self, icon_path, preview: Preview, settings: Settings, on_quit, on_restart
+    ) -> None:
         icon = QIcon(str(icon_path))
         if not icon:
             pixmap = QPixmap(64, 64)

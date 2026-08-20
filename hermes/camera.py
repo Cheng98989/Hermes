@@ -5,6 +5,7 @@ from cv2.typing import MatLike
 
 CAMERA_NUMBER = 4
 
+
 class Camera:
     MAX_FAILURES = 20      # consecutive failed reads before giving up
 

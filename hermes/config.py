@@ -17,6 +17,39 @@ MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 NO_SIGNAL_FRAME_PATH = ROOT / "assets" / "no_signal_frame.png"
 
+
+# STATES
+IDLE = "IDLE"
+ACTIVE = "ACTIVE"
+CURSOR = "CURSOR"
+SCROLL = "SCROLL"
+UNKNOWN = "UNKNOWN"
+
+STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
+
+
+# Audio
+# the folder comes first so that the sounds can be made configurable later:
+# every state change rings, and each ring should be swappable
+# TODO: audio configurabile, ogni transizione allo stato x puo avere un suono
+# si potrebbe mettere di default note del piano diverse e poi configurabili compreso volume singolo
+AUDIO_FOLDER = ROOT / "assets" / "audio"
+
+AUDIO_IDLE = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_ACTIVE = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_CURSOR = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_SCROLL = AUDIO_FOLDER / "bell_ring.wav"
+AUDIO_UNKNOWN = AUDIO_FOLDER / "bell_ring.wav"
+
+AUDIO_STATES = {
+    IDLE: AUDIO_IDLE,
+    ACTIVE: AUDIO_ACTIVE,
+    CURSOR: AUDIO_CURSOR,
+    SCROLL: AUDIO_SCROLL,
+    UNKNOWN: AUDIO_UNKNOWN,
+}
+
+
 BASICS = (
     "camera_index", "audio_volume", "camera_faces_you", "screen", "hand", "zone_min",
     "zone_max",
@@ -124,6 +157,7 @@ def broken_pairs(config: "Config") -> list[str]:
 def label_and_tip(name: str) -> tuple[str, str]:
     return LABELS.get(name, (name.replace("_", " ").capitalize(), ""))
 
+
 @dataclass
 class Config:
     # --- basics --------------------------------------------------------------
@@ -177,10 +211,12 @@ def save(config: Config) -> None:
     text = json.dumps(asdict(config), indent=2)
     CONFIG_PATH.write_text(text, encoding="utf-8")
 
+
 def check_config(config: Config) -> list[str]:
     # At the moment it is the same as broken pairs but there could be add some other chekers
     errors = broken_pairs(config)
     return errors
+
 
 def load() -> Config:
     try:
@@ -204,35 +240,3 @@ def load() -> Config:
         if key in valid:
             filtered[key] = value
     return Config(**filtered)
-
-
-# STATES
-IDLE = "IDLE"
-ACTIVE = "ACTIVE"
-CURSOR = "CURSOR"
-SCROLL = "SCROLL"
-UNKNOWN = "UNKNOWN"
-
-STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
-
-
-# Audio
-# the folder comes first so that the sounds can be made configurable later:
-# every state change rings, and each ring should be swappable
-# TODO: audio configurabile, ogni transizione allo stato x puo avere un suono
-# si potrebbe mettere di default note del piano diverse e poi configurabili compreso volume singolo
-AUDIO_FOLDER = ROOT / "assets" / "audio"
-
-AUDIO_IDLE = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_ACTIVE = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_CURSOR = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_SCROLL = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_UNKNOWN = AUDIO_FOLDER / "bell_ring.wav"
-
-AUDIO_STATES = {
-    IDLE: AUDIO_IDLE,
-    ACTIVE: AUDIO_ACTIVE,
-    CURSOR: AUDIO_CURSOR,
-    SCROLL: AUDIO_SCROLL,
-    UNKNOWN: AUDIO_UNKNOWN,
-}

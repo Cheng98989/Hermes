@@ -28,7 +28,7 @@ class AudioManager(QObject):
 
         if sound is None:
             return
-        
+
         sound.play()
 
 

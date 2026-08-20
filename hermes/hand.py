@@ -18,8 +18,6 @@ from hermes.config import MODEL_PATH
 # running from source there is no such attribute, so walk up from this file.
 
 
-
-
 class Hand:
     def __init__(
         self,
