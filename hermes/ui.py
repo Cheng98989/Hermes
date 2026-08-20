@@ -41,13 +41,16 @@ from hermes.config import (
 _no_signal = cv2.imread(str(NO_SIGNAL_FRAME_PATH))
 NO_SIGNAL_FRAME = _no_signal if _no_signal is not None else np.zeros((720, 1280, 3), dtype=np.uint8)
 
+def list_to_color(bgr: list[int]) -> QColor:
+    return QColor(bgr[2], bgr[1], bgr[0])
+
 
 def make_widget(name: str, value):
     min_value, max_value, step, decimals = limits(name)
 
     if isinstance(value, bool):
         widget = QCheckBox()
-        widget.setChecked(value)
+        write_widget(name, widget, value)
         return widget
 
     if isinstance(value, int):
@@ -56,7 +59,7 @@ def make_widget(name: str, value):
         else:
             widget = QSpinBox()
             widget.setRange(int(min_value), int(max_value))
-            widget.setValue(value)
+        write_widget(name, widget, value)
         return widget
 
     if isinstance(value, float):
@@ -64,13 +67,13 @@ def make_widget(name: str, value):
         widget.setRange(min_value, max_value)
         widget.setDecimals(decimals)
         widget.setSingleStep(step)
-        widget.setValue(value)
+        write_widget(name, widget, value)
         return widget
 
     if isinstance(value, str):
         widget = QComboBox()
         widget.addItems(CHOICES.get(name, (value,)))
-        widget.setCurrentText(value)
+        write_widget(name, widget, value)
         return widget
 
     return None
@@ -86,11 +89,24 @@ def read_widget(name: str, widget):
 
     return widget.value()
 
+def write_widget(name: str, widget, value) -> None:
+    if isinstance(widget, QCheckBox):
+        widget.setChecked(value)
+        return
+    if isinstance(widget, QComboBox):
+        if name == CAMERA_INDEX:
+            widget.setCurrentText(str(value))
+        else:
+            widget.setCurrentText(value)
+        return
+
+    widget.setValue(value)
+
 
 class ColorButton(QPushButton):
     def __init__(self, bgr: list[int]) -> None:
         super().__init__()
-        self.color = QColor(bgr[2], bgr[1], bgr[0])
+        self.color = list_to_color(bgr)
         self.setIconSize(QSize(40, 16))
         self.refresh()
         self.clicked.connect(self.pick)
@@ -112,6 +128,10 @@ class ColorButton(QPushButton):
 
     def bgr(self) -> list[int]:
         return [self.color.blue(), self.color.green(), self.color.red()]
+
+    def set_bgr(self, bgr: list[int]) -> None:
+        self.color = list_to_color(bgr)
+        self.refresh()
 
 
 class Preview(QLabel):
@@ -202,8 +222,18 @@ class Settings(QDialog):
         outer.addWidget(save_button)
         self.setLayout(outer)
 
+    def fill_widgets(self, config: Config) -> None:
+        for name, widget in self.widgets.items():
+            write_widget(name, widget, getattr(config, name))
+
+        for state, button in self.color_buttons.items():
+            colour = config.state_colors.get(state)
+            if colour is not None:
+                button.set_bgr(colour)
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self.fill_widgets(self.config)
         QTimer.singleShot(0, self.refresh_cameras)
         QTimer.singleShot(0, self.refresh_screens)
 
