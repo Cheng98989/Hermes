@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QMessageBox,
     QDialogButtonBox,
+    QLineEdit,
 )
 
 from hermes.config import (
@@ -183,7 +184,7 @@ class Settings(QDialog):
         self.widgets = {}
         self.color_buttons = {}
 
-        forms = {"Basics": QFormLayout(), "Preview": QFormLayout(), "Advanced": QFormLayout()}
+        self.forms = {"Basics": QFormLayout(), "Preview": QFormLayout(), "Advanced": QFormLayout()}
 
         for field in fields(Config):
             widget = make_widget(field.name, getattr(config, field.name))
@@ -201,16 +202,16 @@ class Settings(QDialog):
             text = QLabel(label)
             text.setToolTip(tip)
             widget.setToolTip(tip)
-            forms[page_name].addRow(text, widget)
+            self.forms[page_name].addRow(text, widget)
             self.widgets[field.name] = widget
 
         for state, bgr in config.state_colors.items():
             button = ColorButton(bgr)
-            forms["Preview"].addRow(QLabel(state.capitalize()), button)
+            self.forms["Preview"].addRow(QLabel(state.capitalize()), button)
             self.color_buttons[state] = button
 
-        tabs = QTabWidget()
-        for page_name, form in forms.items():
+        self.tabs = QTabWidget()
+        for page_name, form in self.forms.items():
             page = QWidget()
             page.setLayout(form)
 
@@ -218,7 +219,8 @@ class Settings(QDialog):
             scroll.setWidget(page)
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.NoFrame)
-            tabs.addTab(scroll, page_name)
+            self.tabs.addTab(scroll, page_name)
+        self.tabs_label_update()
 
         box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
@@ -231,8 +233,14 @@ class Settings(QDialog):
         restore = box.button(QDialogButtonBox.StandardButton.RestoreDefaults)
         restore.clicked.connect(self.restore_defaults)
 
+        search_bar = QLineEdit()
+        search_bar.setPlaceholderText("Search settings")
+        search_bar.setClearButtonEnabled(True)
+        search_bar.textChanged.connect(self.filter_widgets)
+
         outer = QVBoxLayout()
-        outer.addWidget(tabs)
+        outer.addWidget(search_bar)
+        outer.addWidget(self.tabs)
         outer.addWidget(box)
         self.setLayout(outer)
 
@@ -302,6 +310,24 @@ class Settings(QDialog):
 
     def restore_defaults(self) -> None:
         self.fill_widgets(Config())
+
+    def filter_widgets(self, text: str) -> None:
+        text = text.casefold()
+
+        for name, widget in self.widgets.items():
+            label, tip = label_and_tip(name)
+            searchable = f"{name} {label} {tip}".casefold()
+            widget.parent().layout().setRowVisible(widget, text in searchable)
+
+        for state, button in self.color_buttons.items():
+            button.parent().layout().setRowVisible(button, text in state.casefold())
+
+        self.tabs_label_update()
+
+    def tabs_label_update(self) -> None:
+        for i, (name, form) in enumerate(self.forms.items()):
+            visible = sum(form.isRowVisible(r) for r in range(form.rowCount()))
+            self.tabs.setTabText(i, f"{name} ({visible})")
 
 
 class Tray(QSystemTrayIcon):
