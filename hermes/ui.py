@@ -13,9 +13,11 @@ from PySide6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QLabel,
     QMenu,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QSystemTrayIcon,
     QTabWidget,
@@ -211,7 +213,12 @@ class Settings(QDialog):
         for page_name, form in forms.items():
             page = QWidget()
             page.setLayout(form)
-            tabs.addTab(page, page_name)
+
+            scroll = QScrollArea()
+            scroll.setWidget(page)
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            tabs.addTab(scroll, page_name)
 
         box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
