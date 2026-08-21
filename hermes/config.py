@@ -11,7 +11,11 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 
 BUNDLE = getattr(sys, "_MEIPASS", None)
 ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
-ICON_PATH = ROOT / "assets" / "icon.png"
+APP_ICON_PATH = ROOT / "assets" / "icon-app.svg"
+TRAY_ICON_PATH = ROOT / "assets" / "icon-tray.svg"
+
+# Process ID
+APP_ID = "Cheng.Hermes"
 MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 

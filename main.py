@@ -32,19 +32,34 @@ from hermes import screen
 from hermes.scroll import ScrollRate
 from hermes.signals import DeadZone, Hold, OneEuroLandmarks
 from hermes.state import DragTracker, JoinedFingers, RightClickTracker, StateMachine
-from hermes.config import ICON_PATH, load, IDLE, ACTIVE, CURSOR, SCROLL, BUNDLE
+from hermes.config import (
+    APP_ICON_PATH,
+    APP_ID,
+    BUNDLE,
+    TRAY_ICON_PATH,
+    ACTIVE,
+    CURSOR,
+    IDLE,
+    SCROLL,
+    load,
+)
+from hermes import taskbar
 from hermes.ui import Preview, Tray, Settings
 from hermes.audio import AudioManager
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 config = load()
 
 # --- Qt ---------------------------------------------------------------------
 
+# before any window: Windows reads it once, when the first one appears
+taskbar.claim_identity(APP_ID)
 
 app = QApplication([])
+app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
 
 # --- hardware ---------------------------------------------------------------
 
@@ -271,7 +286,7 @@ quit_checker.start(100)
 
 preview = Preview(shared, cam.width, cam.height)
 settings = Settings(config, get_available_camera, screen.choices, apply_restart)
-tray = Tray(ICON_PATH, preview, settings, app.quit, apply_restart)
+tray = Tray(TRAY_ICON_PATH, preview, settings, app.quit, apply_restart)
 tray.show()
 
 if config.show_preview:
