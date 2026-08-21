@@ -240,6 +240,11 @@ thread = threading.Thread(target=work, daemon=True)
 thread.start()
 
 
+# how long the worker may take before it counts as gone: the same number
+# decides when to give up waiting for it and when to call it stalled
+WORKER_TIMEOUT = 2.0
+
+
 # stops the worker and waits for it; False if it did not stop in time
 def stop_work(max_time: float) -> bool:
     shared.running = False
@@ -248,7 +253,7 @@ def stop_work(max_time: float) -> bool:
 
 
 def check_quit() -> None:
-    worker_stalled = time.perf_counter() - shared.last_frame_time > 2
+    worker_stalled = time.perf_counter() - shared.last_frame_time > WORKER_TIMEOUT
     if listener.quit or not shared.running or worker_stalled:
         app.quit()
 
@@ -274,13 +279,16 @@ if config.show_preview:
 
 app.exec()
 
-stopped = stop_work(0.5)
+stopped = stop_work(WORKER_TIMEOUT)
 cursor.set_pressed(False)
 # closing these while the worker is still inside cam.read() or mediapipe is
 # what crashes; if it never stopped, leave them to the operating system
 if stopped:
     cam.close()
     hand.close()
+else:
+    # said out loud because the next start may find the webcam still taken
+    print("worker did not stop: camera and mediapipe left to the operating system")
 
 listener.stop()
 
@@ -289,4 +297,7 @@ if restart_wanted:
         command = [sys.executable, *sys.argv]       # python.exe main.py
     else:
         command = [sys.executable, *sys.argv[1:]]   # Hermes.exe
+
+    # the new process inherits this console, so its logs land here too
+    print("restarting")
     subprocess.Popen(command)
