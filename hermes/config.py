@@ -61,7 +61,7 @@ def is_playable_wav(path: Path | str) -> bool:
 
 
 BASICS = (
-    "camera_index", "audio_volume", "camera_faces_you", "screen", "hand", "zone_min",
+    "camera_index", "camera_faces_you", "screen", "hand", "zone_min",
     "zone_max",
     "cursor_dead_zone_radius", "pinch_close", "pinch_open", "pinch_dwell",
     "pinky_pinch_close", "pinky_pinch_open", "pinky_ready_close", "pinky_ready_open",
@@ -70,16 +70,20 @@ BASICS = (
 )
 PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
 
-AUDIO = ()
+AUDIO = ("audio_enabled", "audio_volume")
 # settings that don't require a restart. Not camera_faces_you: HandSelector
 # copied it at startup, so it would mirror the picture but obey the wrong hand
-LIVE = ("show_skeleton", "show_debug_text", "show_mapping_area")
+LIVE = (
+    "show_skeleton", "show_debug_text", "show_mapping_area",
+    "audio_enabled", "audio_volume",
+)
 
 CAMERA_INDEX = "camera_index"
 SCREEN = "screen"
 
 LABELS = {
     "camera_index": ("Camera", "Which webcam, counting from zero"),
+    "audio_enabled": ("Play sounds", "Ring on every state change"),
     "audio_volume": ("Audio volume", "Volume of the audio feedback played during states transition"),
     "camera_faces_you": ("Camera faces you", "Mirror the picture; off if it looks away"),
     "screen": ("Screen", "Which monitor the active zone covers; All spans the desktop"),
@@ -184,6 +188,7 @@ def audio_path(name: str, state: str) -> Path:
 class Config:
     # --- basics --------------------------------------------------------------
     camera_index: int = 0
+    audio_enabled: bool = True
     audio_volume: float = 0.6
     camera_faces_you: bool = True
     screen: str = "Primary"

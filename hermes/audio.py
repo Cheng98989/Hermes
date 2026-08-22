@@ -8,12 +8,12 @@ from hermes.config import Config, DEFAULT_AUDIO, audio_path
 class AudioManager(QObject):
     requested = Signal(str)
 
-    def __init__(self, config: Config, audio_volume: float) -> None:
+    def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
         self.sounds: dict[str, QSoundEffect] = {}
         for state, name in self.config.state_audio.items():
-            self.sounds[state] = load_audio(audio_path(name, state), audio_volume)
+            self.sounds[state] = load_audio(audio_path(name, state))
         self.requested.connect(self._play)
 
     # two halves, because the sounds belong to the main thread: the worker only
@@ -25,15 +25,19 @@ class AudioManager(QObject):
 
     @Slot(str)
     def _play(self, state: str) -> None:
+        if not self.config.audio_enabled:
+            return
+
         sound = self.sounds.get(state)
 
         if sound is None:
             return
 
+        sound.setVolume(self.config.audio_volume)
         sound.play()
 
 
-def load_audio(path: Path, global_volume: float) -> QSoundEffect:
+def load_audio(path: Path) -> QSoundEffect:
     sound = QSoundEffect()
 
     def check_errors() -> None:
@@ -47,7 +51,6 @@ def load_audio(path: Path, global_volume: float) -> QSoundEffect:
     sound.statusChanged.connect(check_errors)
 
     sound.setSource(QUrl.fromLocalFile(path))
-    sound.setVolume(global_volume)
 
     return sound
     

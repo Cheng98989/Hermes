@@ -235,7 +235,7 @@ class Settings(QDialog):
             elif field.name in PREVIEW:
                 page_name = "Preview"
             elif field.name in AUDIO:
-                page_name = "Preview"
+                page_name = "Audio"
             else:
                 page_name = "Advanced"
 
