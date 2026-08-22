@@ -256,7 +256,7 @@ class Settings(QDialog):
             wav_name = QLineEdit()
             wav_name.setReadOnly(True)
             file_button = FileButton(wav_name)
-            file_button.set_path_text(audio_path(name))
+            file_button.set_path_text(audio_path(name, state))
             widget = QWidget()
             audio_row = QHBoxLayout()
             widget.setLayout(audio_row)
@@ -311,8 +311,11 @@ class Settings(QDialog):
                 button.set_bgr(color)
 
         for state, button in self.file_buttons.items():
-            wav = config.state_audio[state]
-            button.set_path_text(audio_path(wav))
+            wav = config.state_audio.get(state)
+            if wav is None:
+                continue
+
+            button.set_path_text(audio_path(wav, state))
             button.reset()
             
 

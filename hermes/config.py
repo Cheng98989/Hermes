@@ -41,7 +41,16 @@ STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
 # every state change rings, and each ring should be swappable
 AUDIO_FOLDER = ROOT / "assets" / "audio"
 
-DEFAULT_AUDIO = AUDIO_FOLDER / "bell_ring.wav"
+# the note heard when nothing else applies
+DEFAULT_AUDIO = AUDIO_FOLDER / "default_C4vH.wav"
+
+# what Hermes ships for each state
+DEFAULT_STATE_AUDIO = {
+    IDLE: AUDIO_FOLDER / "default_D#4vH.wav",
+    ACTIVE: AUDIO_FOLDER / "default_F#4vH.wav",
+    CURSOR: AUDIO_FOLDER / "default_A4vH.wav",
+    SCROLL: AUDIO_FOLDER / "default_C5vH.wav",
+}
 
 def is_playable_wav(path: Path | str) -> bool:
     try:
@@ -163,10 +172,11 @@ def broken_pairs(config: "Config") -> list[str]:
 def label_and_tip(name: str) -> tuple[str, str]:
     return LABELS.get(name, (name.replace("_", " ").capitalize(), ""))
 
-def audio_path(name: str) -> Path:
-    if not name:
-        return DEFAULT_AUDIO
-    return CONFIG_AUDIO / name
+# empty means the user never chose one
+def audio_path(name: str, state: str) -> Path:
+    if name:
+        return CONFIG_AUDIO / name
+    return DEFAULT_STATE_AUDIO.get(state, DEFAULT_AUDIO)
 
 
 
@@ -205,14 +215,12 @@ class Config:
         "ACTIVE":  [0, 255, 0],        # green
         "CURSOR":  [255, 0, 0],        # blue
         "SCROLL":  [0, 255, 255],      # yellow
-        "UNKNOWN": [128, 128, 128],    # grey
     })
     state_audio: dict[str, str] = field(default_factory=lambda: {
         "IDLE":    "",
         "ACTIVE":  "",
         "CURSOR":  "",
         "SCROLL":  "",
-        "UNKNOWN": "",
     })
     # --- advanced ------------------------------------------------------------
     min_hand_detection_confidence: float = 0.5

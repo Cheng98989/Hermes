@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtMultimedia import QSoundEffect
 
@@ -12,8 +12,8 @@ class AudioManager(QObject):
         super().__init__()
         self.config = config
         self.sounds: dict[str, QSoundEffect] = {}
-        for key, path in self.config.state_audio.items():
-            self.sounds[key] = load_audio(str(path), audio_volume)
+        for state, name in self.config.state_audio.items():
+            self.sounds[state] = load_audio(audio_path(name, state), audio_volume)
         self.requested.connect(self._play)
 
     # two halves, because the sounds belong to the main thread: the worker only
@@ -33,7 +33,7 @@ class AudioManager(QObject):
         sound.play()
 
 
-def load_audio(path: str, global_volume: float) -> QSoundEffect:
+def load_audio(path: Path, global_volume: float) -> QSoundEffect:
     sound = QSoundEffect()
 
     def check_errors() -> None:
@@ -46,9 +46,7 @@ def load_audio(path: str, global_volume: float) -> QSoundEffect:
 
     sound.statusChanged.connect(check_errors)
 
-    real_path = audio_path(pathlib.Path(path).name)
-
-    sound.setSource(QUrl.fromLocalFile(real_path))
+    sound.setSource(QUrl.fromLocalFile(path))
     sound.setVolume(global_volume)
 
     return sound
