@@ -1,17 +1,18 @@
-import time
+import pathlib
 from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtMultimedia import QSoundEffect
 
-from hermes.config import AUDIO_STATES
+from hermes.config import Config, DEFAULT_AUDIO, audio_path
 
 
 class AudioManager(QObject):
     requested = Signal(str)
 
-    def __init__(self, audio_volume: float) -> None:
+    def __init__(self, config: Config, audio_volume: float) -> None:
         super().__init__()
+        self.config = config
         self.sounds: dict[str, QSoundEffect] = {}
-        for key, path in AUDIO_STATES.items():
+        for key, path in self.config.state_audio.items():
             self.sounds[key] = load_audio(str(path), audio_volume)
         self.requested.connect(self._play)
 
@@ -35,7 +36,20 @@ class AudioManager(QObject):
 def load_audio(path: str, global_volume: float) -> QSoundEffect:
     sound = QSoundEffect()
 
-    sound.setSource(QUrl.fromLocalFile(path))
+    def check_errors() -> None:
+        if (
+            sound.status() == QSoundEffect.Status.Error and
+            sound.source() != QUrl.fromLocalFile(str(DEFAULT_AUDIO))
+        ):
+            print(f"Failed to load: {path}, loading defautl audio.")
+            sound.setSource(QUrl.fromLocalFile(str(DEFAULT_AUDIO)))
+
+    sound.statusChanged.connect(check_errors)
+
+    real_path = audio_path(pathlib.Path(path).name)
+
+    sound.setSource(QUrl.fromLocalFile(real_path))
     sound.setVolume(global_volume)
 
     return sound
+    

@@ -3,10 +3,14 @@
 import sys
 import json
 import os
+import shutil
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
+import wave
+import filecmp
 
 CONFIG_DIR = Path(os.environ["APPDATA"]) / "Hermes"
+CONFIG_AUDIO = CONFIG_DIR / "audio"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
 BUNDLE = getattr(sys, "_MEIPASS", None)
@@ -35,23 +39,16 @@ STATES = {IDLE, ACTIVE, CURSOR, SCROLL}
 # Audio
 # the folder comes first so that the sounds can be made configurable later:
 # every state change rings, and each ring should be swappable
-# TODO: audio configurabile, ogni transizione allo stato x puo avere un suono
-# si potrebbe mettere di default note del piano diverse e poi configurabili compreso volume singolo
 AUDIO_FOLDER = ROOT / "assets" / "audio"
 
-AUDIO_IDLE = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_ACTIVE = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_CURSOR = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_SCROLL = AUDIO_FOLDER / "bell_ring.wav"
-AUDIO_UNKNOWN = AUDIO_FOLDER / "bell_ring.wav"
+DEFAULT_AUDIO = AUDIO_FOLDER / "bell_ring.wav"
 
-AUDIO_STATES = {
-    IDLE: AUDIO_IDLE,
-    ACTIVE: AUDIO_ACTIVE,
-    CURSOR: AUDIO_CURSOR,
-    SCROLL: AUDIO_SCROLL,
-    UNKNOWN: AUDIO_UNKNOWN,
-}
+def is_playable_wav(path: Path | str) -> bool:
+    try:
+        with wave.open(str(path), "rb"):
+            return True
+    except Exception:
+        return False
 
 
 BASICS = (
@@ -64,6 +61,7 @@ BASICS = (
 )
 PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
 
+AUDIO = ()
 # settings that don't require a restart. Not camera_faces_you: HandSelector
 # copied it at startup, so it would mirror the picture but obey the wrong hand
 LIVE = ("show_skeleton", "show_debug_text", "show_mapping_area")
@@ -165,6 +163,12 @@ def broken_pairs(config: "Config") -> list[str]:
 def label_and_tip(name: str) -> tuple[str, str]:
     return LABELS.get(name, (name.replace("_", " ").capitalize(), ""))
 
+def audio_path(name: str) -> Path:
+    if not name:
+        return DEFAULT_AUDIO
+    return CONFIG_AUDIO / name
+
+
 
 @dataclass
 class Config:
@@ -197,13 +201,19 @@ class Config:
     show_mapping_area: bool = True
     state_colors: dict[str, list[int]] = field(default_factory=lambda: {
         # BGR
-        "IDLE":   [0, 0, 255],        # red
-        "ACTIVE": [0, 255, 0],        # green
-        "CURSOR": [255, 0, 0],        # blue
-        "SCROLL": [0, 255, 255],      # yellow
+        "IDLE":    [0, 0, 255],        # red
+        "ACTIVE":  [0, 255, 0],        # green
+        "CURSOR":  [255, 0, 0],        # blue
+        "SCROLL":  [0, 255, 255],      # yellow
         "UNKNOWN": [128, 128, 128],    # grey
     })
-
+    state_audio: dict[str, str] = field(default_factory=lambda: {
+        "IDLE":    "",
+        "ACTIVE":  "",
+        "CURSOR":  "",
+        "SCROLL":  "",
+        "UNKNOWN": "",
+    })
     # --- advanced ------------------------------------------------------------
     min_hand_detection_confidence: float = 0.5
     min_hand_presence_confidence: float = 0.5
@@ -213,11 +223,38 @@ class Config:
     world_min_cutoff: float = 0.25
     world_beta: float = 10.0
 
+# puts a sound in the library and says what it ended up being called there.
+# The name can differ from the original: another file may already hold it
+def store_sound(chosen: str) -> str:
+    if not chosen:
+        return ""
+
+    source = Path(chosen)
+    if not source.exists():
+        raise FileNotFoundError(f"no such sound: {source}")
+
+    CONFIG_AUDIO.mkdir(parents=True, exist_ok=True)
+
+    index = 0
+    while True:
+        name = source.name if index == 0 else f"{source.stem}_({index}){source.suffix}"
+        stored = CONFIG_AUDIO / name
+
+        if not stored.exists():
+            shutil.copy2(source, stored)
+            return name
+
+        if filecmp.cmp(source, stored, shallow=False):
+            return name
+
+        index += 1
+
 
 def save(config: Config) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     text = json.dumps(asdict(config), indent=2)
     CONFIG_PATH.write_text(text, encoding="utf-8")
+    
 
 
 def check_config(config: Config) -> list[str]:

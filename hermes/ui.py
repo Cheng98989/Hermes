@@ -3,9 +3,10 @@
 import cv2
 from dataclasses import fields
 import numpy as np
+import pathlib
 
 from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtGui import QAction, QColor, QIcon, QImage, QPixmap
+from PySide6.QtGui import QAction, QColor, QIcon, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -22,10 +23,12 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon,
     QTabWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
     QMessageBox,
     QDialogButtonBox,
     QLineEdit,
+    QFileDialog,
 )
 
 from hermes.config import (
@@ -34,13 +37,18 @@ from hermes.config import (
     CHOICES,
     NO_SIGNAL_FRAME_PATH,
     PREVIEW,
+    AUDIO,
     SCREEN,
     LIVE,
+    DEFAULT_AUDIO,
     Config,
     check_config,
     label_and_tip,
     limits,
     save,
+    audio_path,
+    store_sound,
+    is_playable_wav,
 )
 
 _no_signal = cv2.imread(str(NO_SIGNAL_FRAME_PATH))
@@ -141,6 +149,30 @@ class ColorButton(QPushButton):
         self.color = list_to_color(bgr)
         self.refresh()
 
+class FileButton(QPushButton):
+    def __init__(self, label: QLineEdit) -> None:
+        super().__init__()
+        self.setText("...")
+        self.setMaximumWidth(24)
+        self.clicked.connect(self.pick)
+        self.label = label
+        self.reset()
+
+    def pick(self) -> None:
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setNameFilter("WAV files (*.wav)")
+        if dialog.exec() and is_playable_wav(dialog.selectedFiles()[0]):
+            self.path_string = dialog.selectedFiles()[0]
+            self.set_path_text(pathlib.Path(self.path_string))
+
+    def set_path_text(self, path: pathlib.Path):
+        if not path.exists():
+            path = DEFAULT_AUDIO
+        self.label.setText(path.name)
+
+    def reset(self):
+        self.path_string = ""
 
 class Preview(QLabel):
     def __init__(self, shared, width: int, height: int, preview_refresh_time: int = 33) -> None:
@@ -181,10 +213,17 @@ class Settings(QDialog):
         self.get_screens = get_screens
         self.on_restart = on_restart
         self.setWindowTitle("Hermes settings")
+        self.setMinimumWidth(360)
         self.widgets = {}
         self.color_buttons = {}
+        self.file_buttons = {}
 
-        self.forms = {"Basics": QFormLayout(), "Preview": QFormLayout(), "Advanced": QFormLayout()}
+        self.forms = {
+            "Basics": QFormLayout(),
+            "Preview": QFormLayout(),
+            "Audio": QFormLayout(),
+            "Advanced": QFormLayout(),
+        }
 
         for field in fields(Config):
             widget = make_widget(field.name, getattr(config, field.name))
@@ -194,6 +233,8 @@ class Settings(QDialog):
             if field.name in BASICS:
                 page_name = "Basics"
             elif field.name in PREVIEW:
+                page_name = "Preview"
+            elif field.name in AUDIO:
                 page_name = "Preview"
             else:
                 page_name = "Advanced"
@@ -210,7 +251,23 @@ class Settings(QDialog):
             self.forms["Preview"].addRow(QLabel(state.capitalize()), button)
             self.color_buttons[state] = button
 
+        for state, name in config.state_audio.items():
+            label = QLabel(state.capitalize())
+            wav_name = QLineEdit()
+            wav_name.setReadOnly(True)
+            file_button = FileButton(wav_name)
+            file_button.set_path_text(audio_path(name))
+            widget = QWidget()
+            audio_row = QHBoxLayout()
+            widget.setLayout(audio_row)
+            audio_row.setContentsMargins(0, 0, 0, 0)
+            audio_row.addWidget(wav_name)
+            audio_row.addWidget(file_button)
+            self.forms["Audio"].addRow(label, widget)
+            self.file_buttons[state] = file_button
+
         self.tabs = QTabWidget()
+
         for page_name, form in self.forms.items():
             page = QWidget()
             page.setLayout(form)
@@ -249,9 +306,15 @@ class Settings(QDialog):
             write_widget(name, widget, getattr(config, name))
 
         for state, button in self.color_buttons.items():
-            colour = config.state_colors.get(state)
-            if colour is not None:
-                button.set_bgr(colour)
+            color = config.state_colors.get(state)
+            if color is not None:
+                button.set_bgr(color)
+
+        for state, button in self.file_buttons.items():
+            wav = config.state_audio[state]
+            button.set_path_text(audio_path(wav))
+            button.reset()
+            
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -296,13 +359,55 @@ class Settings(QDialog):
                 restart_on_save = True
             self.config.state_colors[state] = new_value
 
+        unstored = []
+        for state, button in self.file_buttons.items():
+            # nothing picked means the state keeps the sound it already had
+            if not button.path_string:
+                continue
+
+            # the chosen file may no longer be there
+            try:
+                new_wav = store_sound(button.path_string)
+            except Exception as problem:
+                unstored.append(f"{state.capitalize()}: {problem}")
+                continue
+
+            if self.config.state_audio[state] != new_wav:
+                restart_on_save = True
+            self.config.state_audio[state] = new_wav
+
         errors = check_config(self.config)
         if errors:
             errors = "\n".join(errors)
             QMessageBox.warning(self, "Failed to save some options", errors)
             return
 
+        # on problems the user can choose to edit their settings or save the rest
+        if unstored:
+            answer = QMessageBox.warning(
+                self,
+                "Some sounds were not saved",
+                "\n".join(unstored)
+                + "\n\nSave the rest anyway, or go back and edit?",
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            )
+
+            if answer != QMessageBox.StandardButton.Ok:
+                return
+
         save(self.config)
+
+        if restart_on_save:
+            answer = QMessageBox.question(
+                self,
+                "Restart Hermes",
+                "Some of the saved settings only apply after a restart."
+                " Restart now?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            restart_on_save = answer == QMessageBox.StandardButton.Yes
+
         self.close()
 
         if restart_on_save:
@@ -321,6 +426,10 @@ class Settings(QDialog):
 
         for state, button in self.color_buttons.items():
             button.parent().layout().setRowVisible(button, text in state.casefold())
+
+        for state, button in self.file_buttons.items():
+            row = button.parent()
+            row.parent().layout().setRowVisible(row, text in state.casefold())
 
         self.tabs_label_update()
 

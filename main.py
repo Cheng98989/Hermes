@@ -86,7 +86,7 @@ hand = Hand(
 )
 
 # --- audio ------------------------------------------------------------------
-audio_manager = AudioManager(config.audio_volume)
+audio_manager = AudioManager(config, config.audio_volume)
 
 # --- UI ---------------------------------------------------------------------
 
