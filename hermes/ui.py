@@ -29,8 +29,11 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QLineEdit,
     QFileDialog,
+    QToolButton,
+    QStyle,
 )
 
+from hermes.audio import AudioPlayer
 from hermes.config import (
     BASICS,
     CAMERA_INDEX,
@@ -149,11 +152,11 @@ class ColorButton(QPushButton):
         self.color = list_to_color(bgr)
         self.refresh()
 
-class FileButton(QPushButton):
+class FileButton(QToolButton):
     def __init__(self, label: QLineEdit) -> None:
         super().__init__()
-        self.setText("...")
-        self.setMaximumWidth(24)
+        self.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
+        self.setToolTip("Choose a sound")
         self.clicked.connect(self.pick)
         self.label = label
         self.reset()
@@ -217,6 +220,7 @@ class Settings(QDialog):
         self.widgets = {}
         self.color_buttons = {}
         self.file_buttons = {}
+        self.audio_player = AudioPlayer()
 
         self.forms = {
             "Basics": QFormLayout(),
@@ -253,6 +257,13 @@ class Settings(QDialog):
 
         for state, name in config.state_audio.items():
             label = QLabel(state.capitalize())
+            play_button = QToolButton()
+            play_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            )
+            play_button.setToolTip("Play")
+            play_button.clicked.connect(lambda _=False, s=state: self.play_sound(s))
+
             wav_name = QLineEdit()
             wav_name.setReadOnly(True)
             file_button = FileButton(wav_name)
@@ -262,6 +273,7 @@ class Settings(QDialog):
             widget.setLayout(audio_row)
             audio_row.setContentsMargins(0, 0, 0, 0)
             audio_row.addWidget(wav_name)
+            audio_row.addWidget(play_button)
             audio_row.addWidget(file_button)
             self.forms["Audio"].addRow(label, widget)
             self.file_buttons[state] = file_button
@@ -301,6 +313,7 @@ class Settings(QDialog):
         outer.addWidget(box)
         self.setLayout(outer)
 
+
     def fill_widgets(self, config: Config) -> None:
         for name, widget in self.widgets.items():
             write_widget(name, widget, getattr(config, name))
@@ -318,6 +331,19 @@ class Settings(QDialog):
             button.set_path_text(audio_path(wav, state))
             button.reset()
             
+    def sound_for(self, state: str) -> pathlib.Path:
+        picked = self.file_buttons[state].path_string
+        if picked:
+            return pathlib.Path(picked)
+
+        return audio_path(self.config.state_audio.get(state, ""), state)
+
+    def play_sound(self, state: str) -> None:
+        volume = read_widget("audio_volume", self.widgets["audio_volume"])
+        if not self.audio_player.play(self.sound_for(state), float(volume)):
+            QMessageBox.warning(
+                self, "Sound not playable", f"{self.sound_for(state)}"
+            )
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

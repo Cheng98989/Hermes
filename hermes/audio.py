@@ -2,7 +2,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtMultimedia import QSoundEffect
 
-from hermes.config import Config, DEFAULT_AUDIO, audio_path
+from hermes.config import Config, DEFAULT_AUDIO, audio_path, is_playable_wav
 
 
 class AudioManager(QObject):
@@ -53,4 +53,21 @@ def load_audio(path: Path) -> QSoundEffect:
     sound.setSource(QUrl.fromLocalFile(path))
 
     return sound
-    
+
+
+class AudioPlayer:
+    def __init__(self) -> None:
+        self.effect = QSoundEffect()
+
+    def play(self, path: Path, volume: float) -> bool:
+        if not is_playable_wav(path):
+            return False
+
+        url = QUrl.fromLocalFile(str(path))
+
+        if self.effect.source() != url:
+            self.effect.setSource(url)
+
+        self.effect.setVolume(volume)
+        self.effect.play()
+        return True

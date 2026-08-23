@@ -58,6 +58,7 @@ config = load()
 # before any window: Windows reads it once, when the first one appears
 taskbar.claim_identity(APP_ID)
 
+
 app = QApplication([])
 app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
 
