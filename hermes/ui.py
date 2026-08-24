@@ -5,7 +5,7 @@ from dataclasses import fields
 import numpy as np
 import pathlib
 
-from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtCore import Qt, QSize, QTimer, Signal, SignalInstance
 from PySide6.QtGui import QAction, QColor, QIcon, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -97,7 +97,7 @@ def read_widget(name: str, widget):
         return widget.isChecked()
     if isinstance(widget, QComboBox):
         if name == CAMERA_INDEX:
-            return int(widget.currentText())
+            return int(widget.currentText() or 0)
         return widget.currentText()
 
     return widget.value()
@@ -116,13 +116,57 @@ def write_widget(name: str, widget, value) -> None:
 
     widget.setValue(value)
 
+def changed_signal(widget) -> SignalInstance:
+    if hasattr(widget, "changed"):
+        return widget.changed
+    if isinstance(widget, QCheckBox):
+        return widget.toggled
+    if isinstance(widget, QComboBox):
+        return widget.currentTextChanged
+
+    return widget.valueChanged
+
 
 # the config keeps colours the way OpenCV wants them, blue first
 def list_to_color(bgr: list[int]) -> QColor:
     return QColor(bgr[2], bgr[1], bgr[0])
 
+def set_row_visible(control, visible: bool) -> None:
+    host = control.parent()
+    host.parent().layout().setRowVisible(host, visible)
+
+def in_a_row(*widgets) -> QWidget:
+    host = QWidget()
+    row = QHBoxLayout(host)
+    row.setContentsMargins(0, 0, 0, 0)
+    for widget in widgets:
+        row.addWidget(widget)
+
+    return host
+
+
+class RestoreButton(QToolButton):
+    def __init__(self, read, write, default) -> None:
+        super().__init__()
+        self.read = read
+        self.write = write
+        self.default = default
+        self.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton))
+        self.setToolTip("Back to the default")
+        self.clicked.connect(self.restore)
+        self.refresh()
+
+    def restore(self) -> None:
+        self.write(self.default)
+        # set_bgr and set_path_text emit nothing, so nobody else would
+        self.refresh()
+
+    def refresh(self) -> None:
+        self.setVisible(self.read() != self.default)
+
 
 class ColorButton(QPushButton):
+    changed = Signal()
     def __init__(self, bgr: list[int]) -> None:
         super().__init__()
         self.color = list_to_color(bgr)
@@ -144,6 +188,7 @@ class ColorButton(QPushButton):
         if chosen.isValid():
             self.color = chosen
             self.refresh()
+            self.changed.emit()
 
     def bgr(self) -> list[int]:
         return [self.color.blue(), self.color.green(), self.color.red()]
@@ -153,12 +198,14 @@ class ColorButton(QPushButton):
         self.refresh()
 
 class FileButton(QToolButton):
+    changed = Signal()
     def __init__(self, label: QLineEdit) -> None:
         super().__init__()
         self.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         self.setToolTip("Choose a sound")
         self.clicked.connect(self.pick)
         self.label = label
+        self.name = ""
         self.reset()
 
     def pick(self) -> None:
@@ -168,14 +215,23 @@ class FileButton(QToolButton):
         if dialog.exec() and is_playable_wav(dialog.selectedFiles()[0]):
             self.path_string = dialog.selectedFiles()[0]
             self.set_path_text(pathlib.Path(self.path_string))
+            self.changed.emit()
 
-    def set_path_text(self, path: pathlib.Path):
+    def set_path_text(self, path: pathlib.Path) -> None:
         if not path.exists():
             path = DEFAULT_AUDIO
         self.label.setText(path.name)
 
-    def reset(self):
+    def value(self) -> str:
+        return self.path_string or self.name
+
+    def reset(self) -> None:
         self.path_string = ""
+
+    def restore_default(self, _unused: str = "") -> None:
+        self.path_string = ""
+        self.name = ""
+        self.label.setText(DEFAULT_AUDIO.name)
 
 class Preview(QLabel):
     def __init__(self, shared, width: int, height: int, preview_refresh_time: int = 33) -> None:
@@ -220,6 +276,8 @@ class Settings(QDialog):
         self.widgets = {}
         self.color_buttons = {}
         self.file_buttons = {}
+        self.restore_buttons = []
+        self.defaults = Config()
         self.audio_player = AudioPlayer()
 
         self.forms = {
@@ -247,13 +305,30 @@ class Settings(QDialog):
             text = QLabel(label)
             text.setToolTip(tip)
             widget.setToolTip(tip)
-            self.forms[page_name].addRow(text, widget)
+
+            restore = RestoreButton(
+                lambda n=field.name, w=widget: read_widget(n, w),
+                lambda value, n=field.name, w=widget: write_widget(n, w, value),
+                getattr(self.defaults, field.name),
+            )
+            changed_signal(widget).connect(restore.refresh)
+
+            self.forms[page_name].addRow(text, in_a_row(widget, restore))
             self.widgets[field.name] = widget
+            self.restore_buttons.append(restore)
 
         for state, bgr in config.state_colors.items():
             button = ColorButton(bgr)
-            self.forms["Preview"].addRow(QLabel(state.capitalize()), button)
+            restore = RestoreButton(
+                button.bgr, button.set_bgr, self.defaults.state_colors[state]
+            )
+            button.changed.connect(restore.refresh)
+
+            self.forms["Preview"].addRow(
+                QLabel(state.capitalize()), in_a_row(button, restore)
+            )
             self.color_buttons[state] = button
+            self.restore_buttons.append(restore)
 
         for state, name in config.state_audio.items():
             label = QLabel(state.capitalize())
@@ -268,14 +343,15 @@ class Settings(QDialog):
             wav_name.setReadOnly(True)
             file_button = FileButton(wav_name)
             file_button.set_path_text(audio_path(name, state))
-            widget = QWidget()
-            audio_row = QHBoxLayout()
-            widget.setLayout(audio_row)
-            audio_row.setContentsMargins(0, 0, 0, 0)
-            audio_row.addWidget(wav_name)
-            audio_row.addWidget(play_button)
-            audio_row.addWidget(file_button)
-            self.forms["Audio"].addRow(label, widget)
+            restore = RestoreButton(
+                file_button.value, file_button.restore_default, ""
+            )
+            file_button.changed.connect(restore.refresh)
+
+            self.forms["Audio"].addRow(
+                label, in_a_row(wav_name, restore, play_button, file_button)
+            )
+            self.restore_buttons.append(restore)
             self.file_buttons[state] = file_button
 
         self.tabs = QTabWidget()
@@ -329,7 +405,12 @@ class Settings(QDialog):
                 continue
 
             button.set_path_text(audio_path(wav, state))
+            button.name = wav
             button.reset()
+
+        # the signals say when a value changes, not how it stands now
+        for restore in self.restore_buttons:
+            restore.refresh()
             
     def sound_for(self, state: str) -> pathlib.Path:
         picked = self.file_buttons[state].path_string
@@ -451,14 +532,13 @@ class Settings(QDialog):
         for name, widget in self.widgets.items():
             label, tip = label_and_tip(name)
             searchable = f"{name} {label} {tip}".casefold()
-            widget.parent().layout().setRowVisible(widget, text in searchable)
+            set_row_visible(widget, text in searchable)
 
         for state, button in self.color_buttons.items():
-            button.parent().layout().setRowVisible(button, text in state.casefold())
+            set_row_visible(button, text in state.casefold())
 
         for state, button in self.file_buttons.items():
-            row = button.parent()
-            row.parent().layout().setRowVisible(row, text in state.casefold())
+            set_row_visible(button, text in state.casefold())
 
         self.tabs_label_update()
 
