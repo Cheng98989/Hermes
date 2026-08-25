@@ -6,6 +6,31 @@ from cv2.typing import MatLike
 from iris.geometry import XY
 from iris.landmarks import CONNECTIONS
 
+# BGRs
+WHITE = (255, 255, 255)
+GREY = (170, 170, 170)
+YELLOW = (0, 255, 255)
+ORANGE = (0, 165, 255)
+CYAN = (255, 255, 0)
+RED = (0, 0, 255)
+
+# degub texts colors
+LINE_COLOURS = {
+    "FPS": CYAN,
+    "Gesture": WHITE,
+    "Pinch": ORANGE,
+    "Fingers": ORANGE,
+    "Command": YELLOW,
+    "Pointer": GREY,
+}
+
+FONT = cv2.FONT_HERSHEY_SIMPLEX
+SCALE = 0.55
+THICKNESS = 1
+MARGIN = 12
+FIRST_LINE = 30
+LINE_HEIGHT = 24
+
 
 class Overlay:
     def __init__(
@@ -20,6 +45,7 @@ class Overlay:
         for state, color in state_colors.items():
             self.state_colors[state] = tuple(color)
         self.unknown_color = self.state_colors.get("UNKNOWN", (128, 128, 128))
+        self._next_y = FIRST_LINE
 
     def _to_frame(self, point: XY) -> tuple[int, int]:
         return int(point.x * self.width), int(point.y * self.height)
@@ -33,17 +59,26 @@ class Overlay:
             for point in single_hand:
                 cv2.circle(frame, self._to_frame(point), 2, (0, 255, 0), -1)
 
-    def draw_fps(self, frame: MatLike, fps: float) -> None:
-        cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    def start_lines(self) -> None:
+        self._next_y = FIRST_LINE
 
-    def draw_text(self, frame: MatLike, text: str, y: int = 70) -> None:
-        cv2.putText(frame, text, (10, y),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    def draw_line(self, frame: MatLike, label: str, value: str, colour=None) -> None:
+        colour = colour or LINE_COLOURS.get(label, WHITE)
+        cv2.putText(frame, f"{label:<9}{value}", (MARGIN, self._next_y),
+                    FONT, SCALE, colour, THICKNESS, cv2.LINE_AA)
+        self._next_y += LINE_HEIGHT
+
+    # its own size and colour
+    def draw_paused(self, frame: MatLike) -> None:
+        cv2.putText(frame, "PAUSED", (MARGIN, self.height - MARGIN),
+                    FONT, 1.0, RED, 2, cv2.LINE_AA)
+
+    def state_colour(self, state: str) -> tuple[int, ...]:
+        return self.state_colors.get(state, self.unknown_color)
 
     # the border shows which state Iris is in
     def draw_state_border(self, frame: MatLike, state: str, thickness: int = 8) -> None:
-        color = self.state_colors.get(state, self.unknown_color)
+        color = self.state_colour(state)
         cv2.rectangle(frame, (0, 0), (self.width - 1, self.height - 1), color, thickness)
 
     # the part of the camera view that reaches the screen

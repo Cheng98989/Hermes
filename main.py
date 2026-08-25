@@ -197,6 +197,8 @@ def process_frame() -> None:
     state = state_machine.update(gesture, held, paused)
 
     # cursor mode
+    target = None
+    clicks = 0
     mouse_position = palm_point(hands2d)
     if state == CURSOR and mouse_position is not None:
         # mapped here rather than inside Cursor, so the dead zone can sit in
@@ -212,7 +214,8 @@ def process_frame() -> None:
     # scroll mode
     scroll_position = finger_point(hands2d)
     if state == SCROLL and scroll_position is not None:
-        cursor.scroll(scroll_rate.update(scroll_position.y, now))
+        clicks = scroll_rate.update(scroll_position.y, now)
+        cursor.scroll(clicks)
     else:
         scroll_rate.reset()
 
@@ -222,23 +225,34 @@ def process_frame() -> None:
         shared.last_command = fired
 
     # preview
-    # --raw-landmarks draws what mediapipe reported, unsmoothed
-    if paused:
-        overlay.draw_text(frame, "PAUSED", y=160)
     if config.show_skeleton:
         overlay.draw_landmarks(frame, hands2d)
     if config.show_mapping_area:
         overlay.draw_mouse_mapping_area(frame, *mapping_fraction)
-    if config.show_debug_text:
-        overlay.draw_fps(frame, fps)
-        overlay.draw_text(
+
+    overlay.start_lines()
+    if config.show_fps:
+        overlay.draw_line(frame, "FPS", f"{fps:.1f}")
+    if config.show_state:
+        overlay.draw_line(frame, "State", state, overlay.state_colour(state))
+    if config.show_gesture:
+        overlay.draw_line(frame, "Gesture", f"{gesture}  {held:.1f}s")
+    if config.show_pinch:
+        overlay.draw_line(
             frame,
-            f"{state}  {gesture}  {held:.1f}s | {shared.last_command} | "
-            f"left {left_click_distance:.2f} | right {right_click_distance:.2f} | "
-            f"drag {drag_status} | guard {guard}",
-            y=100,
+            "Pinch",
+            f"left {left_click_distance:.2f}   right {right_click_distance:.2f}"
+            f"   drag {drag_status}   guard {guard}",
         )
-        overlay.draw_text(frame, f"gap {gap:.2f}", y=130)
+    if config.show_gap:
+        overlay.draw_line(frame, "Fingers", f"gap {gap:.2f}")
+    if config.show_command:
+        overlay.draw_line(frame, "Command", shared.last_command or "-")
+    if config.show_pointer:
+        aimed = f"{target.x:.0f}, {target.y:.0f}" if target is not None else "-"
+        overlay.draw_line(frame, "Pointer", f"{aimed}   scroll {clicks}")
+    if paused:
+        overlay.draw_paused(frame)
     overlay.draw_scroll_origin(frame, scroll_rate.origin, scroll_rate.dead_zone)
     overlay.draw_state_border(frame, state)
     shared.frame = frame

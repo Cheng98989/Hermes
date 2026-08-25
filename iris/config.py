@@ -68,13 +68,19 @@ BASICS = (
     "fingers_joined", "fingers_apart", "scroll_speed", "scroll_span",
     "scroll_dead_zone",
 )
-PREVIEW = ("show_preview", "show_skeleton", "show_debug_text", "show_mapping_area")
+PREVIEW = (
+    "show_preview", "show_skeleton", "show_mapping_area",
+    "show_fps", "show_state", "show_gesture", "show_pinch", "show_gap",
+    "show_command", "show_pointer",
+)
 
 AUDIO = ("audio_enabled", "audio_volume")
 # settings that don't require a restart. Not camera_faces_you: HandSelector
 # copied it at startup, so it would mirror the picture but obey the wrong hand
 LIVE = (
-    "show_skeleton", "show_debug_text", "show_mapping_area",
+    "show_skeleton", "show_mapping_area",
+    "show_fps", "show_state", "show_gesture", "show_pinch", "show_gap",
+    "show_command", "show_pointer",
     "audio_enabled", "audio_volume",
 )
 
@@ -105,7 +111,13 @@ LABELS = {
     "scroll_dead_zone": ("Scroll deadzone", "Drift allowed before scrolling starts"),
     "show_preview": ("Open preview at start", ""),
     "show_skeleton": ("Draw the hand skeleton", ""),
-    "show_debug_text": ("Draw the debug lines", ""),
+    "show_fps": ("Show the frame rate", "How many frames a second the recogniser keeps up with"),
+    "show_state": ("Show the state", "Idle, Active, Cursor or Scroll, in the colour of the border"),
+    "show_gesture": ("Show the gesture", "The pose being recognised and how long it has been held"),
+    "show_pinch": ("Show the pinch distances", "Thumb to index and thumb to little finger; use these to tune the clicks"),
+    "show_gap": ("Show the finger gap", "Index to middle: below the threshold the two count as joined, and scrolling starts"),
+    "show_command": ("Show the last command", "The media key that fired most recently"),
+    "show_pointer": ("Show the pointer target", "The pixel the cursor is being sent to, and the scroll speed"),
     "show_mapping_area": ("Draw the active zone", ""),
     "min_hand_detection_confidence": ("Detection confidence", "How sure before reporting a hand"),
     "min_hand_presence_confidence": ("Presence confidence", "How sure the hand is still there"),
@@ -212,7 +224,13 @@ class Config:
     # --- preview -------------------------------------------------------------
     show_preview: bool = True
     show_skeleton: bool = True
-    show_debug_text: bool = True
+    show_fps: bool = True
+    show_state: bool = True
+    show_gesture: bool = True
+    show_pinch: bool = True
+    show_gap: bool = True
+    show_command: bool = True
+    show_pointer: bool = False
     show_mapping_area: bool = True
     state_colors: dict[str, list[int]] = field(default_factory=lambda: {
         # BGR
