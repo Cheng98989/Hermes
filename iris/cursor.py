@@ -2,7 +2,7 @@
 
 from pynput.mouse import Button, Controller
 
-from hermes.geometry import Point, Rect
+from iris.geometry import Point, Rect
 
 
 # where `value` falls inside the active zone, 0 to 1, clamped

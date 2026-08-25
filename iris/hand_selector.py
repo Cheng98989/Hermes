@@ -1,8 +1,8 @@
-"""Selects the one hand Hermes obeys."""
+"""Selects the one hand Iris obeys."""
 
 from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerResult
 
-from hermes.landmarks import FrameHands, WorldHands
+from iris.landmarks import FrameHands, WorldHands
 
 LEFT = "Left"
 RIGHT = "Right"
@@ -10,7 +10,7 @@ RIGHT = "Right"
 OPPOSITE = {LEFT: RIGHT, RIGHT: LEFT}
 
 
-# Keeps only the hand Hermes is configured to obey; mediapipe is asked for two
+# Keeps only the hand Iris is configured to obey; mediapipe is asked for two
 # so it can see the other one.
 #
 # camera.py mirrors the frame by default, which flips the labels: pass

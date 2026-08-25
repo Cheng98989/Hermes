@@ -2,7 +2,7 @@
 
 import math
 
-from hermes.geometry import Point, distance_2d
+from iris.geometry import Point, distance_2d
 
 
 # --- time -------------------------------------------------------------------

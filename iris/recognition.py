@@ -2,8 +2,8 @@
 
 import math
 
-from hermes.geometry import distance_2d, distance_3d
-from hermes.landmarks import (
+from iris.geometry import distance_2d, distance_3d
+from iris.landmarks import (
     INDEX_DIP,
     INDEX_PIP,
     INDEX_TIP,

@@ -2,7 +2,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtMultimedia import QSoundEffect
 
-from hermes.config import Config, DEFAULT_AUDIO, audio_path, is_playable_wav
+from iris.config import Config, DEFAULT_AUDIO, audio_path, is_playable_wav
 
 
 class AudioManager(QObject):

@@ -9,7 +9,7 @@ from pathlib import Path
 import wave
 import filecmp
 
-CONFIG_DIR = Path(os.environ["APPDATA"]) / "Hermes"
+CONFIG_DIR = Path(os.environ["APPDATA"]) / "Iris"
 CONFIG_AUDIO = CONFIG_DIR / "audio"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
@@ -19,7 +19,7 @@ APP_ICON_PATH = ROOT / "assets" / "icon-app.svg"
 TRAY_ICON_PATH = ROOT / "assets" / "icon-tray.svg"
 
 # Process ID
-APP_ID = "Cheng.Hermes"
+APP_ID = "Cheng.Iris"
 MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
 
@@ -44,7 +44,7 @@ AUDIO_FOLDER = ROOT / "assets" / "audio"
 # the note heard when nothing else applies
 DEFAULT_AUDIO = AUDIO_FOLDER / "default_C4vH.wav"
 
-# what Hermes ships for each state
+# what Iris ships for each state
 DEFAULT_STATE_AUDIO = {
     IDLE: AUDIO_FOLDER / "default_D#4vH.wav",
     ACTIVE: AUDIO_FOLDER / "default_F#4vH.wav",
@@ -87,7 +87,7 @@ LABELS = {
     "audio_volume": ("Audio volume", "Volume of the audio feedback played during states transition"),
     "camera_faces_you": ("Camera faces you", "Mirror the picture; off if it looks away"),
     "screen": ("Screen", "Which monitor the active zone covers; All spans the desktop"),
-    "hand": ("Hand", "Which hand Hermes obeys; the other is ignored"),
+    "hand": ("Hand", "Which hand Iris obeys; the other is ignored"),
     "zone_min": ("Active zone start", "The part of the picture that covers the screen"),
     "zone_max": ("Active zone end", "Wider means finer control but more hand travel"),
     "cursor_dead_zone_radius": ("Pointer steadiness", "Pixels before the pointer follows"),

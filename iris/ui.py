@@ -1,4 +1,4 @@
-"""Hermes's UI"""
+"""Iris's UI"""
 
 import cv2
 from dataclasses import fields
@@ -33,8 +33,8 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-from hermes.audio import AudioPlayer
-from hermes.config import (
+from iris.audio import AudioPlayer
+from iris.config import (
     BASICS,
     CAMERA_INDEX,
     CHOICES,
@@ -237,7 +237,7 @@ class Preview(QLabel):
     def __init__(self, shared, width: int, height: int, preview_refresh_time: int = 33) -> None:
         super().__init__()
         self.shared = shared
-        self.setWindowTitle("Hermes")
+        self.setWindowTitle("Iris")
         self.resize(width, height)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
@@ -271,7 +271,7 @@ class Settings(QDialog):
         self.get_camera = get_camera
         self.get_screens = get_screens
         self.on_restart = on_restart
-        self.setWindowTitle("Hermes settings")
+        self.setWindowTitle("Iris settings")
         self.setMinimumWidth(360)
         self.widgets = {}
         self.color_buttons = {}
@@ -510,7 +510,7 @@ class Settings(QDialog):
         if restart_on_save:
             answer = QMessageBox.question(
                 self,
-                "Restart Hermes",
+                "Restart Iris",
                 "Some of the saved settings only apply after a restart."
                 " Restart now?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -561,7 +561,7 @@ class Tray(QSystemTrayIcon):
         super().__init__(icon)
         self.preview = preview
         self.settings = settings
-        self.setToolTip("Hermes")
+        self.setToolTip("Iris")
 
         self.menu = QMenu()
 

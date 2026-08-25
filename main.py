@@ -7,17 +7,17 @@ import sys
 
 from cv2.typing import MatLike
 
-from hermes.actions import Actions
-from hermes.anchors import finger_point, palm_point
-from hermes.camera import Camera, get_available_camera
-from hermes.cursor import Cursor, to_screen
-from hermes.fps import FpsCounter
-from hermes.hand import Hand
-from hermes.hand_selector import HandSelector
-from hermes.listener import Listener
-from hermes.landmarks import FrameHands, WorldHands, RIGHT_CLICK_TIPS, LEFT_CLICK_TIPS
-from hermes.overlay import Overlay
-from hermes.recognition import (
+from iris.actions import Actions
+from iris.anchors import finger_point, palm_point
+from iris.camera import Camera, get_available_camera
+from iris.cursor import Cursor, to_screen
+from iris.fps import FpsCounter
+from iris.hand import Hand
+from iris.hand_selector import HandSelector
+from iris.listener import Listener
+from iris.landmarks import FrameHands, WorldHands, RIGHT_CLICK_TIPS, LEFT_CLICK_TIPS
+from iris.overlay import Overlay
+from iris.recognition import (
     OPEN_PALM,
     PINKY_PINCH,
     PINKY_READY,
@@ -28,11 +28,11 @@ from hermes.recognition import (
     pinch_distance,
     pinch_guard_ok,
 )
-from hermes import screen
-from hermes.scroll import ScrollRate
-from hermes.signals import DeadZone, Hold, OneEuroLandmarks
-from hermes.state import DragTracker, JoinedFingers, RightClickTracker, StateMachine
-from hermes.config import (
+from iris import screen
+from iris.scroll import ScrollRate
+from iris.signals import DeadZone, Hold, OneEuroLandmarks
+from iris.state import DragTracker, JoinedFingers, RightClickTracker, StateMachine
+from iris.config import (
     APP_ICON_PATH,
     APP_ID,
     BUNDLE,
@@ -43,9 +43,9 @@ from hermes.config import (
     SCROLL,
     load,
 )
-from hermes import taskbar
-from hermes.ui import Preview, Tray, Settings
-from hermes.audio import AudioManager
+from iris import taskbar
+from iris.ui import Preview, Tray, Settings
+from iris.audio import AudioManager
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
@@ -69,7 +69,7 @@ if cam.lost:
     QMessageBox.warning(
         None,
         "No camera",
-        "No webcam answered. Hermes will run without a picture; "
+        "No webcam answered. Iris will run without a picture; "
         "connect one and restart.",
     )
 elif cam.camera_index != config.camera_index:
@@ -312,7 +312,7 @@ if restart_wanted:
     if BUNDLE is None:
         command = [sys.executable, *sys.argv]       # python.exe main.py
     else:
-        command = [sys.executable, *sys.argv[1:]]   # Hermes.exe
+        command = [sys.executable, *sys.argv[1:]]   # Iris.exe
 
     # the new process inherits this console, so its logs land here too
     print("restarting")

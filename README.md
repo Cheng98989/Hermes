@@ -1,11 +1,11 @@
-# Hermes
+# Iris
 
 *Control your desktop in a different way.*
 
 [🇬🇧 English](README.md) · [🇮🇹 Italiano](README.it.md)
 
 ## Table of contents
-- [What is Hermes](#what-is-hermes)
+- [What is Iris](#what-is-iris)
 - [Privacy notice](#privacy-notice)
 - [Quick start](#quick-start)
 - [How to use it](#how-to-use-it)
@@ -17,32 +17,32 @@
 - [Development notes](#development-notes)
 - [Contact](#contact)
 
-## What is Hermes
+## What is Iris
 
 Ever eaten in front of your PC with greasy hands and still wanted to switch tabs, change the volume, or pause a video, without cleaning your hands first to touch the mouse and keyboard? Or maybe your desk is small, and while you study or work, the mouse and keyboard end up pushed somewhere awkward to reach?
 
-Hermes was built for exactly that: it uses your webcam to recognize hand gestures and lets you control the cursor and a few desktop functions with gestures, without touching anything.
+Iris was built for exactly that: it uses your webcam to recognize hand gestures and lets you control the cursor and a few desktop functions with gestures, without touching anything.
 
 ## Privacy notice
 
-**Hermes does not collect or send webcam images over the Internet.** All processing happens locally, on your own computer.
+**Iris does not collect or send webcam images over the Internet.** All processing happens locally, on your own computer.
 
 ## Quick start
 
-Hermes has currently only been tested on **Windows 11**. All you need is a working webcam.
+Iris has currently only been tested on **Windows 11**. All you need is a working webcam.
 
 There's no installer:
 1. Download the `.zip`.
 2. Extract it into a folder of your choice.
-3. Run `Hermes.exe`.
+3. Run `Iris.exe`.
 
-On first launch, Hermes automatically creates a configuration file with default values.
+On first launch, Iris automatically creates a configuration file with default values.
 
 ## How to use it
 
-On startup a terminal window opens — **it must stay open**: closing it closes the app too — and after a moment, the preview window with the camera stream appears. If Hermes can't find any webcam, the preview shows an error message. Closing the preview window doesn't close Hermes: the app keeps running in the background.
+On startup a terminal window opens — **it must stay open**: closing it closes the app too — and after a moment, the preview window with the camera stream appears. If Iris can't find any webcam, the preview shows an error message. Closing the preview window doesn't close Iris: the app keeps running in the background.
 
-Click Hermes' icon in the system tray to open the dropdown menu, which has three options:
+Click Iris' icon in the system tray to open the dropdown menu, which has three options:
 - **Preview** — show or hide the preview window.
 - **Settings** — open the settings panel.
 - **Quit** — actually close the application.
@@ -51,11 +51,11 @@ Click Hermes' icon in the system tray to open the dropdown menu, which has three
 
 ## States and gestures
 
-Hermes works as a state machine: at any moment you're in one specific state, and only certain gestures — held for a set number of seconds — move you to the next one.
+Iris works as a state machine: at any moment you're in one specific state, and only certain gestures — held for a set number of seconds — move you to the next one.
 
 | State | What it does | How to enter it |
 |---|---|---|
-| **Idle** | Resting state: Hermes watches but doesn't interact with the desktop. | Starting state. |
+| **Idle** | Resting state: Iris watches but doesn't interact with the desktop. | Starting state. |
 | **Active** | Recognizes gestures for volume up/down and play/pause (see table below). | From Idle, open palm held for 1 s. |
 | **Cursor** | The mouse pointer follows your hand; pinching (thumb + index) clicks and drags. | From Active, index finger only extended, for 0.5 s. |
 | **Scroll** | Scroll by moving your hand above or below a reference line. | From Cursor, index and middle fingers extended and together, for 0.3 s. |
@@ -90,7 +90,7 @@ Every parameter has a tooltip (hover over it to read). If a tooltip is missing o
 |---|---|
 | Camera | Which webcam to use, counting from zero. |
 | Camera faces you | Mirrors the image; turn off if the webcam doesn't face you. |
-| Hand | Which hand Hermes follows; the other is ignored. |
+| Hand | Which hand Iris follows; the other is ignored. |
 | Active zone start / end | The portion of the frame that maps to the screen; a wider zone gives finer control but needs more hand travel. |
 | Pointer steadiness | Minimum pixel movement before the pointer starts following your hand. |
 | Pinch to click | How close thumb and index must get to register a click. |
@@ -105,7 +105,7 @@ Every parameter has a tooltip (hover over it to read). If a tooltip is missing o
 | Draw the hand skeleton | Draws the hand skeleton in the preview. |
 | Draw the debug lines | Shows debug information in the preview. |
 | Draw the active zone | Draws the active zone in the preview. |
-| Detection confidence | How confident Hermes must be before reporting a detected hand. |
+| Detection confidence | How confident Iris must be before reporting a detected hand. |
 | Presence confidence | How confident it must be that the hand is still present. |
 | Tracking confidence | How confident it must be to keep following the same hand. |
 | Pointer smoothing | Lower values keep the pointer steadier at rest, at the cost of more lag. |
@@ -118,25 +118,25 @@ To restore the default values, at the moment you need to manually delete the con
    ```
    %appdata%
    ```
-2. Go into the `Hermes` folder and delete `config.json`.
-3. Restart Hermes: the file will be recreated with default values.
+2. Go into the `Iris` folder and delete `config.json`.
+3. Restart Iris: the file will be recreated with default values.
 
 ## Uninstalling
 
-1. Delete the folder where you extracted Hermes.
-2. If you also want to remove the configuration data, delete the `Hermes` folder inside `%appdata%` too.
+1. Delete the folder where you extracted Iris.
+2. If you also want to remove the configuration data, delete the `Iris` folder inside `%appdata%` too.
 
 ## Building from source
 
 Clone the repository:
 ```
-git clone https://github.com/Cheng98989/Hermes.git
-cd Hermes
+git clone https://github.com/Cheng98989/Iris.git
+cd Iris
 ```
 
 Create/activate a Python environment (developed with 3.11.8) and install the required dependencies, including `pyinstaller`. Then build:
 ```
-pyinstaller Hermes.spec
+pyinstaller Iris.spec
 ```
 
 The output — everything needed to run the app — will be in the `dist` folder.

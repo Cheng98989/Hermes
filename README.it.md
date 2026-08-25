@@ -1,11 +1,11 @@
-# Hermes
+# Iris
 
 *Controlla il desktop in un modo diverso dal solito.*
 
 [🇬🇧 English](README.md) · [🇮🇹 Italiano](README.it.md)
 
 ## Indice
-- [Cos'è Hermes](#cosè-hermes)
+- [Cos'è Iris](#cosè-iris)
 - [Avviso sulla privacy](#avviso-sulla-privacy)
 - [Avvio rapido](#avvio-rapido)
 - [Come si usa](#come-si-usa)
@@ -17,32 +17,32 @@
 - [Sviluppo e note dell'autore](#sviluppo-e-note-dellautore)
 - [Contatti](#contatti)
 
-## Cos'è Hermes
+## Cos'è Iris
 
 Ti è mai capitato di mangiare davanti al PC con le mani sporche e voler comunque cambiare scheda, alzare il volume o mettere in pausa un video, senza dover prima pulirti le mani per toccare mouse e tastiera? Oppure hai una scrivania piccola, e mentre studi o lavori mouse e tastiera finiscono in un angolo scomodo?
 
-Hermes nasce per questi casi: usa la fotocamera per riconoscere i gesti della mano e ti permette di controllare il cursore e alcune funzioni del desktop a gesti, senza toccare nulla.
+Iris nasce per questi casi: usa la fotocamera per riconoscere i gesti della mano e ti permette di controllare il cursore e alcune funzioni del desktop a gesti, senza toccare nulla.
 
 ## Avviso sulla privacy
 
-**Hermes non raccoglie né invia immagini della webcam a Internet.** Tutta l'elaborazione avviene in locale, sul tuo computer.
+**Iris non raccoglie né invia immagini della webcam a Internet.** Tutta l'elaborazione avviene in locale, sul tuo computer.
 
 ## Avvio rapido
 
-Al momento Hermes è stato testato solo su **Windows 11**. Ti serve solo una webcam funzionante.
+Al momento Iris è stato testato solo su **Windows 11**. Ti serve solo una webcam funzionante.
 
 Non è previsto un installer:
-1. Scarica lo `.zip`.
+1. Scarica lo `.zip`. mettere il link alla pagina release piu recente
 2. Estrai il contenuto in una cartella a tua scelta.
-3. Avvia `Hermes.exe`.
+3. Avvia `Iris.exe`.
 
-Al primo avvio Hermes crea automaticamente il file di configurazione con i valori predefiniti.
+Al primo avvio Iris crea automaticamente una cartella per i dati dell'app in appdata
 
 ## Come si usa
 
-All'avvio si apre un terminale — **deve restare aperto**: se lo chiudi, l'app si chiude con esso — e dopo qualche istante la finestra di anteprima con lo streaming della fotocamera. Se Hermes non trova nessuna webcam, l'anteprima mostra un messaggio d'errore. Chiudere la finestra di anteprima non chiude Hermes: l'app continua a girare in background.
+All'avvio si apre un terminale — **deve restare aperto**: se lo chiudi, l'app si chiude con esso — e dopo qualche istante la finestra di anteprima con lo streaming della fotocamera. Se Iris non trova nessuna webcam, l'anteprima mostra un messaggio d'errore. Chiudere la finestra di anteprima non chiude Iris: l'app continua a girare in background.
 
-Fai clic sull'icona di Hermes nella tray di sistema per aprire il menu a tendina, con tre voci:
+Fai clic sull'icona di Iris nella tray di sistema per aprire il menu a tendina, con tre voci:
 - **Preview** — mostra o nasconde la finestra di anteprima.
 - **Settings** — apre il pannello delle impostazioni.
 - **Quit** — chiude davvero l'applicazione.
@@ -51,11 +51,11 @@ Fai clic sull'icona di Hermes nella tray di sistema per aprire il menu a tendina
 
 ## Stati e gesti
 
-Hermes funziona come una macchina a stati: in ogni momento ti trovi in uno stato preciso, e solo certi gesti — tenuti per un certo numero di secondi — ti fanno passare a quello successivo.
+Iris funziona come una macchina a stati: in ogni momento ti trovi in uno stato preciso, e solo certi gesti — tenuti per un certo numero di secondi — ti fanno passare a quello successivo.
 
 | Stato | Cosa fa | Come entrarci |
 |---|---|---|
-| **Idle** | Stato di riposo: Hermes osserva ma non interagisce con il desktop. | Stato di partenza. |
+| **Idle** | Stato di riposo: Iris osserva ma non interagisce con il desktop. | Stato di partenza. |
 | **Active** | Riconosce i gesti per alzare/abbassare il volume e play/pausa (vedi tabella sotto). | Dall'Idle, mano aperta tenuta per 1 s. |
 | **Cursor** | Il cursore del mouse segue la mano; il pinch (pollice e indice) fa clic e trascina. | Dall'Active, solo indice teso per 0,5 s. |
 | **Scroll** | Scorri la pagina muovendo la mano sopra o sotto una riga di riferimento. | Dal Cursor, indice e medio tesi e uniti, per 0,3 s. |
@@ -90,7 +90,7 @@ Ogni parametro ha un tooltip (passa il cursore sopra la voce per leggerlo). Se u
 |---|---|
 | Camera | Quale webcam usare, contando da zero. |
 | Camera faces you | Specchia l'immagine; disattivalo se la fotocamera non è rivolta verso di te. |
-| Hand | Quale mano segue Hermes; l'altra viene ignorata. |
+| Hand | Quale mano segue Iris; l'altra viene ignorata. |
 | Active zone start / end | La porzione dell'inquadratura che corrisponde allo schermo; una zona più ampia dà un controllo più preciso ma richiede movimenti più ampi della mano. |
 | Pointer steadiness | Pixel di movimento minimo prima che il puntatore inizi a seguire la mano. |
 | Pinch to click | Quanto devono avvicinarsi pollice e indice per generare un clic. |
@@ -105,7 +105,7 @@ Ogni parametro ha un tooltip (passa il cursore sopra la voce per leggerlo). Se u
 | Draw the hand skeleton | Disegna lo scheletro della mano nell'anteprima. |
 | Draw the debug lines | Mostra le informazioni di debug nell'anteprima. |
 | Draw the active zone | Disegna la zona attiva nell'anteprima. |
-| Detection confidence | Quanto Hermes deve essere sicuro prima di segnalare una mano rilevata. |
+| Detection confidence | Quanto Iris deve essere sicuro prima di segnalare una mano rilevata. |
 | Presence confidence | Quanto deve essere sicuro che la mano sia ancora presente. |
 | Tracking confidence | Quanto deve essere sicuro per continuare a seguire la stessa mano. |
 | Pointer smoothing | Valori più bassi rendono il puntatore più stabile da fermo, a costo di più ritardo. |
@@ -118,25 +118,25 @@ Per tornare ai valori predefiniti, al momento serve cancellare manualmente il fi
    ```
    %appdata%
    ```
-2. Entra nella cartella `Hermes` ed elimina `config.json`.
-3. Riavvia Hermes: il file verrà ricreato con i valori di default.
+2. Entra nella cartella `Iris` ed elimina `config.json`.
+3. Riavvia Iris: il file verrà ricreato con i valori di default.
 
 ## Disinstallazione
 
-1. Elimina la cartella in cui hai estratto Hermes.
-2. Se vuoi rimuovere anche i dati di configurazione, elimina anche la cartella `Hermes` dentro `%appdata%`.
+1. Elimina la cartella in cui hai estratto Iris.
+2. Se vuoi rimuovere anche i dati di configurazione, elimina anche la cartella `Iris` dentro `%appdata%`.
 
 ## Compilare il codice sorgente
 
 Clona la repository:
 ```
-git clone https://github.com/Cheng98989/Hermes.git
-cd Hermes
+git clone https://github.com/Cheng98989/Iris.git
+cd Iris
 ```
 
 Crea/attiva l'ambiente Python (sviluppato con la 3.11.8) e installa le dipendenze necessarie, incluso `pyinstaller`. Poi compila:
 ```
-pyinstaller Hermes.spec
+pyinstaller Iris.spec
 ```
 
 Il risultato — tutto il necessario per l'esecuzione — sarà nella cartella `dist`.

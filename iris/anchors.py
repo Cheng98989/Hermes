@@ -1,7 +1,7 @@
 """Where the hand is: the point each control follows."""
 
-from hermes.geometry import Point
-from hermes.landmarks import INDEX_DIP, KNUCKLES_FOR_CURSOR, MIDDLE_DIP, FrameHands
+from iris.geometry import Point
+from iris.landmarks import INDEX_DIP, KNUCKLES_FOR_CURSOR, MIDDLE_DIP, FrameHands
 
 
 # drives the pointer: the knuckles are rigid, so the fingers can pinch without

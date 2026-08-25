@@ -3,7 +3,7 @@
 import ctypes
 from ctypes import wintypes
 
-from hermes.geometry import Rect
+from iris.geometry import Rect
 
 PRIMARY = "Primary"
 ALL = "All"

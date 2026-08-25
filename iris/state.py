@@ -1,10 +1,10 @@
-"""The states Hermes can be in, and the trackers that feed them."""
+"""The states Iris can be in, and the trackers that feed them."""
 
 from collections.abc import Callable
 
-from hermes.signals import Hold, Hysteresis, Repeater
-from hermes.config import IDLE, ACTIVE, CURSOR, SCROLL, STATES
-from hermes.recognition import (
+from iris.signals import Hold, Hysteresis, Repeater
+from iris.config import IDLE, ACTIVE, CURSOR, SCROLL, STATES
+from iris.recognition import (
     FIST,
     NONE,
     OPEN_PALM,

@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from pynput.keyboard import Controller, Key
 
-from hermes.signals import Repeater
+from iris.signals import Repeater
 
 
 class Action(NamedTuple):

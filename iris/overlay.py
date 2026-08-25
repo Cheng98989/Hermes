@@ -3,8 +3,8 @@
 import cv2
 from cv2.typing import MatLike
 
-from hermes.geometry import XY
-from hermes.landmarks import CONNECTIONS
+from iris.geometry import XY
+from iris.landmarks import CONNECTIONS
 
 
 class Overlay:
@@ -41,7 +41,7 @@ class Overlay:
         cv2.putText(frame, text, (10, y),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-    # the border shows which state Hermes is in
+    # the border shows which state Iris is in
     def draw_state_border(self, frame: MatLike, state: str, thickness: int = 8) -> None:
         color = self.state_colors.get(state, self.unknown_color)
         cv2.rectangle(frame, (0, 0), (self.width - 1, self.height - 1), color, thickness)
