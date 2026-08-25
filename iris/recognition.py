@@ -105,7 +105,9 @@ def pinch_guard_ok(world: WorldHands) -> bool:
     if not world:
         return False
 
-    return not (fingers_up(world[0]) & GUARD_FINGERS)
+    up = fingers_up(world[0]) & GUARD_FINGERS
+
+    return up in (set(), GUARD_FINGERS)
 
 
 # --- scroll -----------------------------------------------------------------

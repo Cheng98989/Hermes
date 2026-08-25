@@ -53,14 +53,15 @@ Fai clic sull'icona di Iris nella tray di sistema per aprire il menu a tendina, 
 
 Iris funziona come una macchina a stati: in ogni momento ti trovi in uno stato preciso, e solo certi gesti — tenuti per un certo numero di secondi — ti fanno passare a quello successivo.
 
-| Stato | Cosa fa | Come entrarci |
-|---|---|---|
-| **Idle** | Stato di riposo: Iris osserva ma non interagisce con il desktop. | Stato di partenza. |
-| **Active** | Riconosce i gesti per alzare/abbassare il volume e play/pausa (vedi tabella sotto). | Dall'Idle, mano aperta tenuta per 1 s. |
-| **Cursor** | Il cursore del mouse segue la mano; il pinch (pollice e indice) fa clic e trascina. | Dall'Active, solo indice teso per 0,5 s. |
-| **Scroll** | Scorri la pagina muovendo la mano sopra o sotto una riga di riferimento. | Dal Cursor, indice e medio tesi e uniti, per 0,3 s. |
-| **Unknown** | Stato che, salvo bug, non dovrebbe mai comparire. | — |
+| Stato       | Cosa fa                                                                                                          | Come entrarci                                       | Feedback sonoro                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
+| **Idle**    | Stato di riposo: Iris osserva ma non interagisce con il desktop.                                                 | Stato di partenza.                                  | scrivi i file di default presenti per gli stati |
+| **Active**  | Riconosce i gesti per alzare/abbassare il volume e play/pausa (vedi tabella sotto).                              | Dall'Idle, mano aperta tenuta per 1 s.              |                                                 |
+| **Cursor**  | Il cursore del mouse segue la mano<br>ed e' possibile fare click mouse destro e sinistro con anche trascinamento | Dall'Active, solo indice teso per 0,5 s.            |                                                 |
+| **Scroll**  | Imitazione della rotellina del mouse                                                                             | Dal Cursor, indice e medio tesi e uniti, per 0,3 s. |                                                 |
+| **Unknown** | Stato che, salvo bug, non dovrebbe mai comparire.                                                                | —                                                   |                                                 |
 
+Fai anche una tabella semplice che ha nelle righe e colonne gli stati e agli incroci scrivi il tempo per uscire ed entrare. Tipo nelle righe: stato di partenza e colonne arrivo, in quelle combinazioni in qui non c-' un passaggio tieni vuoto
 Per tornare indietro:
 - Da **Cursor** ad **Active**: mano aperta, 0,5 s.
 - Da **Scroll** a **Cursor**: apri le dita (indice e medio separati) oppure solo indice teso, 0,2 s.
@@ -68,13 +69,31 @@ Per tornare indietro:
 - Da **Active** a **Idle**: pugno chiuso (1 s).
 - Da **Cursor**, **Active** o **Scroll** a **Idle**: mano non più rilevata per 3 s.
 
-Nello stato **Active**, alcuni gesti attivano direttamente un'azione (non un cambio di stato):
+Ora qua c'e una spiegazione dettagliata dei gesti negli stati
+Active
 
-| Gesto | Azione | Note |
+| Gesto          | Azione                  | Note                                                         |
+| -------------- | ----------------------- | ------------------------------------------------------------ |
+| Victory        | Alza il volume          | Tenuto 0,5 s, poi si ripete ogni 0,3 s finché il gesto resta |
+| Victory closed | Abbassa il volume       | Tenuto 0,5 s, poi si ripete ogni 0,3 s                       |
+| Three          | Play/pausa multimediale | Tenuto 0,5 s, azione singola senza ripetizione               |
+
+Cursor
+
+| Gesto         | Azione                                         | Note                                                                      |
+| ------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| Pinch indice  | Click / Trascinamento / Release tasto sinistro | -                                                                         |
+| Pinch mignolo | Click / Release oneshot tasto destro           | -                                                                         |
+| -             | Movimento cursore                              | fintanto che si e' in cursor mode il cursore segue la posizione media tra |
+
+Scrool:
+|Gesto|Azione|Note|
 |---|---|---|
-| Indice e medio tesi e separati (*victory*) | Alza il volume | Tenuto 0,5 s, poi si ripete ogni 0,3 s finché il gesto resta |
-| Indice, medio e anulare tesi (*three*) | Abbassa il volume | Tenuto 0,5 s, poi si ripete ogni 0,3 s |
-| Indice e mignolo tesi (*rock*) | Play/pausa multimediale | Tenuto 0,5 s, azione singola senza ripetizione |
+|Victory closed|Scrool| Viene visualizzata una riga nella preview scrol in base alla posizione delle punta delle dita rispetto alla riga. Quando si entra in scroll e' ricosciuta anche l'azione. Per cambiare il riferimento della riga si puo annulare per un breve tempo victory_closed e spostare le dita, la riga si posizionare alla posizione circa tra prime e seconda falange |
+
+
+
+
 
 Nello stato **Cursor**, il puntatore segue la posizione media tra le nocche di medio, anulare e mignolo. Il pinch (avvicinare pollice e indice) avvia un trascinamento; separando di nuovo le dita il trascinamento termina (release). Consiglio dell'autore: per un riconoscimento del pinch più preciso, mostra la mano alla camera con un'angolazione leggermente obliqua, non frontale.
 

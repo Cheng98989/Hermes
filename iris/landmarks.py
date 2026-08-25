@@ -40,7 +40,7 @@ LEFT_CLICK_TIPS = (THUMB_TIP, INDEX_TIP)
 RIGHT_CLICK_TIPS = (THUMB_TIP, PINKY_TIP)
 
 # the knuckles the pointer follows; the index MCP is left out
-KNUCKLES_FOR_CURSOR = (MIDDLE_MCP, RING_MCP, PINKY_MCP)
+KNUCKLES_FOR_CURSOR = (MIDDLE_MCP, RING_MCP)
 
 # every landmark of a finger, knuckle to tip
 FINGER_LANDMARKS = {
