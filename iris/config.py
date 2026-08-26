@@ -18,6 +18,8 @@ ROOT = Path(BUNDLE) if BUNDLE else Path(__file__).parent.parent
 APP_ICON_PATH = ROOT / "assets" / "icon-app.svg"
 TRAY_ICON_PATH = ROOT / "assets" / "icon-tray.svg"
 
+VERSION = "0.1.0"
+
 # Process ID
 APP_ID = "Cheng.Iris"
 MODEL_PATH = ROOT / "models" / "hand_landmarker.task"

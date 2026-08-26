@@ -38,6 +38,7 @@ from iris.config import (
     APP_ID,
     BUNDLE,
     TRAY_ICON_PATH,
+    VERSION,
     ACTIVE,
     CURSOR,
     IDLE,
@@ -60,7 +61,8 @@ log.setup()
 config = load()
 
 logging.info(
-    "starting: camera=%s screen=%s hand=%s",
+    "starting: version=%s camera=%s screen=%s hand=%s",
+    VERSION,
     config.camera_index,
     config.screen,
     config.hand,
