@@ -1,0 +1,32 @@
+# Changelog
+
+## [0.1.0] - 2026-08-27
+
+### Added
+- Audio feedback on every state change, with the sound of each state configurable in the settings.
+- In Cursor mode the pointer can move across multiple monitors.
+- New gestures for the right click.
+- **Restart** entry in the tray icon menu.
+- The settings panel can be scrolled.
+- Search bar in the settings.
+- **F12** pauses Iris, holding it in the Idle state.
+- A restore button next to each setting, shown when the value is not the default one.
+- A **Restore Defaults** button that takes every setting back at once.
+- A log file in `%appdata%\Iris`, so crashes are recorded now that the executable has no console.
+- Several minor settings that come with the changes above.
+
+### Changed
+- The project was renamed from Hermes to Iris.
+- The debug overlay is split into separate lines, each one switchable on its own.
+- New application and tray icons.
+
+### Fixed
+- The frame keeps the correct aspect ratio when the preview window is resized.
+- Settings that were changed but not saved no longer reappear when the panel is closed and opened again.
+- Opening the settings now reads the saved configuration first.
+
+### Removed
+- The `argparse` option that showed the raw landmarks without the filters.
+- The terminal window that opened alongside the app.
+
+[0.1.0]: https://github.com/Cheng98989/Iris/releases/tag/v0.1.0
