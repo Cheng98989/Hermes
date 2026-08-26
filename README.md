@@ -40,6 +40,8 @@ There's no installer:
 2. Extract it into a folder of your choice.
 3. Run `Iris.exe`.
 
+> **Note:** `Iris.exe` isn't digitally signed, so on first launch Windows may show the "Windows protected your PC" warning. To go ahead: **More info** → **Run anyway**. For the same reason, some antivirus software may quarantine the file.
+
 On first launch, Iris automatically creates the folder holding the app's data inside `%appdata%\Iris` (see [Uninstalling](#uninstalling)).
 
 ## How to use it

@@ -40,6 +40,8 @@ Non è previsto un installer:
 2. Estrai il contenuto in una cartella a tua scelta.
 3. Avvia `Iris.exe`.
 
+> **Nota:** `Iris.exe` non è firmato digitalmente, quindi al primo avvio Windows può mostrare l'avviso "Windows ha protetto il PC". Per procedere: **Ulteriori informazioni** → **Esegui comunque**. Per lo stesso motivo qualche antivirus può mettere il file in quarantena.
+
 Al primo avvio Iris crea automaticamente, dentro `%appdata%\Iris`, la cartella con i dati dell'app (vedi [Disinstallazione](#disinstallazione)).
 
 ## Come si usa
