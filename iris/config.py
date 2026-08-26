@@ -22,6 +22,8 @@ TRAY_ICON_PATH = ROOT / "assets" / "icon-tray.svg"
 APP_ID = "Cheng.Iris"
 MODEL_PATH = ROOT / "models" / "hand_landmarker.task"
 
+# Logs
+LOG_FILE = CONFIG_DIR / "iris.log"
 
 NO_SIGNAL_FRAME_PATH = ROOT / "assets" / "no_signal_frame.png"
 

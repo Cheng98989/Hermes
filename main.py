@@ -4,6 +4,7 @@ import time
 import threading
 import subprocess
 import sys
+import logging
 
 from cv2.typing import MatLike
 
@@ -44,6 +45,7 @@ from iris.config import (
     load,
 )
 from iris import taskbar
+from iris import log
 from iris.ui import Preview, Tray, Settings
 from iris.audio import AudioManager
 
@@ -51,7 +53,18 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+# --- Logger -----------------------------------------------------------------
+
+log.setup()
+
 config = load()
+
+logging.info(
+    "starting: camera=%s screen=%s hand=%s",
+    config.camera_index,
+    config.screen,
+    config.hand,
+)
 
 # --- Qt ---------------------------------------------------------------------
 
@@ -317,8 +330,9 @@ if stopped:
     cam.close()
     hand.close()
 else:
-    # said out loud because the next start may find the webcam still taken
-    print("worker did not stop: camera and mediapipe left to the operating system")
+    logging.warning(
+        "worker did not stop: camera and mediapipe left to the operating system"
+    )
 
 listener.stop()
 
@@ -328,6 +342,5 @@ if restart_wanted:
     else:
         command = [sys.executable, *sys.argv[1:]]   # Iris.exe
 
-    # the new process inherits this console, so its logs land here too
-    print("restarting")
+    logging.info("restarting")
     subprocess.Popen(command)
