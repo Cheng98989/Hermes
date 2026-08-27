@@ -15,6 +15,7 @@
 - [Come si usa](#come-si-usa)
 - [Stati e gesti](#stati-e-gesti)
 - [Impostazioni](#impostazioni)
+- [Limitazioni](#limitazioni)
 - [Disinstallazione](#disinstallazione)
 - [Compilare il codice sorgente](#compilare-il-codice-sorgente)
 - [Licenza](#licenza)
@@ -223,6 +224,16 @@ In alternativa ai pulsanti di ripristino puoi cancellare il file di configurazio
    ```
 2. Entra nella cartella `Iris` ed elimina `config.json`.
 3. Riavvia Iris: il file verrà ricreato con i valori di default.
+
+## Limitazioni
+
+Iris non riesce a muovere il cursore sopra le finestre che girano con privilegi di amministratore. È Windows a impedirlo, di proposito, e i casi sono due.
+
+**La richiesta di privilegi di amministratore.** Quando Windows chiede di confermare un'elevazione, passa a un desktop separato e protetto, dove nessuna applicazione può inviare input. Lì il cursore non risponde ai gesti, e non c'è modo di aggirare la cosa: quella schermata esiste proprio perché nessun software possa rispondere al posto tuo. Usa mouse e tastiera per confermare o annullare.
+
+**Le finestre delle app avviate come amministratore.** Un'applicazione normale non può inviare input a una finestra con privilegi più alti, quindi finché una di quelle è in primo piano il cursore resta fermo. Torna a rispondere appena passi a un'altra finestra.
+
+Se ti serve controllare a gesti anche quelle applicazioni, avvia Iris con il tasto destro su `Iris.exe` → **Esegui come amministratore**. Risolve però solo il secondo caso: la schermata di conferma dei privilegi resta comunque fuori portata.
 
 ## Disinstallazione
 

@@ -15,6 +15,7 @@
 - [How to use it](#how-to-use-it)
 - [States and gestures](#states-and-gestures)
 - [Settings](#settings)
+- [Limitations](#limitations)
 - [Uninstalling](#uninstalling)
 - [Building from source](#building-from-source)
 - [License](#license)
@@ -223,6 +224,16 @@ As an alternative to the restore buttons, you can delete the configuration file:
    ```
 2. Go into the `Iris` folder and delete `config.json`.
 3. Restart Iris: the file will be recreated with default values.
+
+## Limitations
+
+Iris can't move the pointer over windows that run with administrator privileges. Windows prevents it on purpose, and there are two separate cases.
+
+**The administrator privileges prompt.** When Windows asks you to confirm an elevation, it switches to a separate, protected desktop where no application can send input. The pointer doesn't answer your gestures there, and there is no way around it: that screen exists precisely so that no software can answer on your behalf. Use the mouse and the keyboard to confirm or cancel.
+
+**The windows of apps started as administrator.** An ordinary application can't send input to a window with higher privileges, so the pointer stays put for as long as one of those is in the foreground. It answers again as soon as you switch to another window.
+
+If you need gesture control over those applications too, start Iris by right-clicking `Iris.exe` → **Run as administrator**. That only covers the second case: the privileges prompt stays out of reach either way.
 
 ## Uninstalling
 

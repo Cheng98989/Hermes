@@ -40,6 +40,29 @@ Closing the preview window does not close Iris. It keeps running in the
 background.
 
 
+LIMITATIONS
+-----------
+The pointer stops answering your gestures over windows that run with
+administrator privileges. Windows prevents it on purpose, and there are
+two separate cases.
+
+The administrator privileges prompt. When Windows asks you to confirm
+an elevation, it switches to a separate, protected desktop where no
+application can send input. There is no way around it: that screen
+exists precisely so that no software can answer on your behalf. Use the
+mouse and the keyboard to confirm or cancel.
+
+The windows of apps started as administrator. An ordinary application
+cannot send input to a window with higher privileges, so the pointer
+stays put for as long as one of those is in the foreground. It answers
+again as soon as you switch to another window.
+
+If you need gesture control over those applications too, start Iris by
+right-clicking Iris.exe and choosing "Run as administrator". That only
+covers the second case: the privileges prompt stays out of reach either
+way.
+
+
 YOUR FILES
 ----------
 Iris keeps its data in %appdata%\Iris
