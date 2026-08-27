@@ -199,14 +199,18 @@ class ColorButton(QPushButton):
 
 class FileButton(QToolButton):
     changed = Signal()
-    def __init__(self, label: QLineEdit) -> None:
+    def __init__(self, label: QLineEdit, state: str) -> None:
         super().__init__()
         self.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         self.setToolTip("Choose a sound")
         self.clicked.connect(self.pick)
         self.label = label
+        self.state = state
         self.name = ""
         self.reset()
+
+    def default_path(self) -> pathlib.Path:
+        return audio_path("", self.state)
 
     def pick(self) -> None:
         dialog = QFileDialog(self)
@@ -219,7 +223,7 @@ class FileButton(QToolButton):
 
     def set_path_text(self, path: pathlib.Path) -> None:
         if not path.exists():
-            path = DEFAULT_AUDIO
+            path = self.default_path()
         self.label.setText(path.name)
 
     def value(self) -> str:
@@ -231,7 +235,7 @@ class FileButton(QToolButton):
     def restore_default(self, _unused: str = "") -> None:
         self.path_string = ""
         self.name = ""
-        self.label.setText(DEFAULT_AUDIO.name)
+        self.label.setText(self.default_path().name)
 
 class Preview(QLabel):
     def __init__(self, shared, width: int, height: int, preview_refresh_time: int = 33) -> None:
@@ -341,7 +345,7 @@ class Settings(QDialog):
 
             wav_name = QLineEdit()
             wav_name.setReadOnly(True)
-            file_button = FileButton(wav_name)
+            file_button = FileButton(wav_name, state)
             file_button.set_path_text(audio_path(name, state))
             restore = RestoreButton(
                 file_button.value, file_button.restore_default, ""
@@ -471,16 +475,16 @@ class Settings(QDialog):
 
         unstored = []
         for state, button in self.file_buttons.items():
-            # nothing picked means the state keeps the sound it already had
-            if not button.path_string:
-                continue
-
-            # the chosen file may no longer be there
-            try:
-                new_wav = store_sound(button.path_string)
-            except Exception as problem:
-                unstored.append(f"{state.capitalize()}: {problem}")
-                continue
+            if button.path_string:
+                # the chosen file may no longer be there
+                try:
+                    new_wav = store_sound(button.path_string)
+                except Exception as problem:
+                    unstored.append(f"{state.capitalize()}: {problem}")
+                    continue
+            else:
+                # empty after a reset, unchanged when nobody touched it
+                new_wav = button.name
 
             if self.config.state_audio[state] != new_wav:
                 restart_on_save = True
