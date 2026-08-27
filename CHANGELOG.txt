@@ -3,6 +3,22 @@ Iris - Changelog
 https://github.com/Cheng98989/Iris
 
 
+0.1.1 - 2026-08-27
+==================
+
+ADDED
+-----
+- The documentation now covers the two cases where the pointer cannot
+  reach a window running as administrator.
+
+FIXED
+-----
+- Restoring the sound of a state to its default is saved: the reset was
+  shown in the panel but never written to the configuration.
+- Restoring the sound of a state shows the default of that state,
+  instead of the generic fallback sound.
+
+
 0.1.0 - 2026-08-27
 ==================
 

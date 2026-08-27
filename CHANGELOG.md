@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1] - 2026-08-27
+
+### Added
+- The documentation now covers the two cases where the pointer cannot reach a window running as administrator.
+
+### Fixed
+- Restoring the sound of a state to its default is saved: the reset was shown in the panel but never written to the configuration.
+- Restoring the sound of a state shows the default of that state, instead of the generic fallback sound.
+
 ## [0.1.0] - 2026-08-27
 
 ### Added
@@ -29,4 +38,5 @@
 - The `argparse` option that showed the raw landmarks without the filters.
 - The terminal window that opened alongside the app.
 
+[0.1.1]: https://github.com/Cheng98989/Iris/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Cheng98989/Iris/releases/tag/v0.1.0
